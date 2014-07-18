@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:NavigatorContent xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					xmlns:s="library://ns.adobe.com/flex/spark"
+					xmlns:mx="library://ns.adobe.com/flex/mx" 
+					xmlns:components="org.cim.components.*"
+					width="1920" height="1080" creationComplete="finish()"
+					show="password.hand.play();">
+	
+	<fx:Script>
+		<![CDATA[
+			import com.adobe.crypto.MD5;
+			
+			import flash.utils.getQualifiedClassName;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.rpc.events.ResultEvent;
+			
+			import org.cim.DataShop;
+			import org.cim.vo.User;
+			
+			[Bindable]
+			/**
+			 * The app's data shop.
+			 */
+			private var dataShop:DataShop = DataShop.instance;
+			
+			/**
+			 * The function to be called when the signup button is clicked.
+			 */
+			public var signupFunction:Function;
+			
+			/**
+			 * Handles the component creation completing.
+			 * Fetches instruments from the server to display in the instrument list.
+			 * Listens for login actions.
+			 */
+			private function finish():void {
+				// get instruments
+				dataShop.instrumentService.getParentInstruments();
+				
+				// listen for a login
+				dataShop.userService.attemptLogin.addEventListener(ResultEvent.RESULT, processLoginAttempt);
+			}
+			
+			/**
+			 * Attempts to login based on the information entered.
+			 */
+			private function login():void {
+				// check for a password first
+				if(password.password == "") {
+					// none entered... tell them and reset the selected instrument
+					Alert.show("Please enter your gesture first.").width = 500;
+					instrumentList.clearSelectedItem();
+					return;
+				}
+				
+				if(instrumentList.getSelectedItem()) {
+					// concatenate the password, instrument, and institution
+					var prePassword:String = password.password + instrumentList.getSelectedItem().instrumentName + "McGill";
+					var hashedPassword:String = MD5.hash(prePassword);
+					
+					// clean up
+					cleanup();
+					
+					// send the server the request
+					dataShop.userService.attemptLogin(hashedPassword);
+				}
+			}
+			
+			/**
+			 * Handles the result of an attempted login.
+			 * Checks to see if it was good or bad.
+			 */
+			private function processLoginAttempt(event:ResultEvent):void {
+				if(!event.result) {
+					Alert.show("Oops!  The password or instrument you entered seems to be incorrect.\nPlease try again!").width = 500;
+				} else {
+					dataShop.loggedInUser = event.result as User;
+				}
+			}
+			
+			/**
+			 * Attempts to call the sign up function as defined.
+			 */
+			private function signup():void {
+				cleanup();
+				try {
+					signupFunction();
+				} catch(e:Error) {
+					trace("no signup function defined");
+				}
+			}
+			
+			/**
+			 * Cleans up the password area and the instrument selection.
+			 */
+			private function cleanup():void {
+				password.clean();
+				instrumentList.clearSelectedItem();
+			}
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		
+	</fx:Declarations>
+	
+	<s:layout>
+		<s:HorizontalLayout horizontalAlign="center"  
+							paddingTop="50" paddingLeft="50" 
+							paddingRight="50" paddingBottom="50" />
+	</s:layout>
+	
+	<!-- Left Column -->
+	<s:VGroup width="100%">
+		<!-- Logo -->
+		<!--<s:BorderContainer width="250" height="250" cornerRadius="8" 
+		borderColor="0x999999" borderStyle="solid" borderWeight="1">
+		<s:layout>
+		<s:VerticalLayout verticalAlign="middle" horizontalAlign="center" />
+		</s:layout>
+		
+		<s:Label text="OO Logo" styleName="header" />
+		</s:BorderContainer>-->
+		<mx:Image source="/assets/images/logo.png" smoothBitmapContent="true" />
+	</s:VGroup>
+	
+	<!-- Centre Column -->
+	<s:VGroup width="650" height="100%" horizontalAlign="center" verticalAlign="middle">
+		<!-- Login Form -->
+		<!--<s:Label text="Open Orchestra" fontWeight="bold" fontSize="30" width="100%" styleName="headerTitleLabel" />-->
+		<s:Label text="Password" fontWeight="bold" width="100%" styleName="headerTitleLabel" paddingBottom="8" />
+		
+		<components:PasswordSwiper id="password" labelStyle="login" />
+		
+		<mx:Spacer height="50" />
+		
+		<s:Label text="Select your instrument" fontWeight="bold" width="100%" styleName="headerTitleLabel" />
+		<s:Label text="this is part of your password" width="100%" />
+		
+		<!-- Instrument List with custom border -->
+		<components:InstrumentScroller id="instrumentList" instrumentClicked="login()" />
+	</s:VGroup>
+	
+	
+	<!-- Right Column -->
+	<s:VGroup width="100%" horizontalAlign="right">
+		<s:Label text="Not a member yet?" width="250" />
+		<s:Button label="Sign up" width="250" height="40" click="signup()" />
+	</s:VGroup>
+	
+</s:NavigatorContent>

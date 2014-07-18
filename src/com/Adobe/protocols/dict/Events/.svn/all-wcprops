@@ -1,0 +1,65 @@
+K 25
+svn:wc:ra_dav:version-url
+V 116
+/sresvn/src/!svn/ver/3754/openorchestra/OpenOrchestra%20Client%20Opera%20Release/src/com/adobe/protocols/dict/events
+END
+DisconnectedEvent.as
+K 25
+svn:wc:ra_dav:version-url
+V 137
+/sresvn/src/!svn/ver/3754/openorchestra/OpenOrchestra%20Client%20Opera%20Release/src/com/adobe/protocols/dict/events/DisconnectedEvent.as
+END
+DatabaseEvent.as
+K 25
+svn:wc:ra_dav:version-url
+V 133
+/sresvn/src/!svn/ver/3754/openorchestra/OpenOrchestra%20Client%20Opera%20Release/src/com/adobe/protocols/dict/events/DatabaseEvent.as
+END
+DefinitionHeaderEvent.as
+K 25
+svn:wc:ra_dav:version-url
+V 141
+/sresvn/src/!svn/ver/3754/openorchestra/OpenOrchestra%20Client%20Opera%20Release/src/com/adobe/protocols/dict/events/DefinitionHeaderEvent.as
+END
+DefinitionEvent.as
+K 25
+svn:wc:ra_dav:version-url
+V 135
+/sresvn/src/!svn/ver/3754/openorchestra/OpenOrchestra%20Client%20Opera%20Release/src/com/adobe/protocols/dict/events/DefinitionEvent.as
+END
+NoMatchEvent.as
+K 25
+svn:wc:ra_dav:version-url
+V 132
+/sresvn/src/!svn/ver/3754/openorchestra/OpenOrchestra%20Client%20Opera%20Release/src/com/adobe/protocols/dict/events/NoMatchEvent.as
+END
+MatchEvent.as
+K 25
+svn:wc:ra_dav:version-url
+V 130
+/sresvn/src/!svn/ver/3754/openorchestra/OpenOrchestra%20Client%20Opera%20Release/src/com/adobe/protocols/dict/events/MatchEvent.as
+END
+MatchStrategiesEvent.as
+K 25
+svn:wc:ra_dav:version-url
+V 140
+/sresvn/src/!svn/ver/3754/openorchestra/OpenOrchestra%20Client%20Opera%20Release/src/com/adobe/protocols/dict/events/MatchStrategiesEvent.as
+END
+ErrorEvent.as
+K 25
+svn:wc:ra_dav:version-url
+V 130
+/sresvn/src/!svn/ver/3754/openorchestra/OpenOrchestra%20Client%20Opera%20Release/src/com/adobe/protocols/dict/events/ErrorEvent.as
+END
+DictionaryServerEvent.as
+K 25
+svn:wc:ra_dav:version-url
+V 141
+/sresvn/src/!svn/ver/3754/openorchestra/OpenOrchestra%20Client%20Opera%20Release/src/com/adobe/protocols/dict/events/DictionaryServerEvent.as
+END
+ConnectedEvent.as
+K 25
+svn:wc:ra_dav:version-url
+V 134
+/sresvn/src/!svn/ver/3754/openorchestra/OpenOrchestra%20Client%20Opera%20Release/src/com/adobe/protocols/dict/events/ConnectedEvent.as
+END

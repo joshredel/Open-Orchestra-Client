@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:ItemRenderer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" 
+		 width="80" height="80" click="drawBorder()" render="drawBorder()">
+	
+	<fx:Script>
+		<![CDATA[
+			
+			/**
+			 * Removes whitespace and capitalization from the instrument name
+			 * for use in the image.
+			 */
+			private function strip(instrument:String):String {
+				var stripped:String = "";
+				var parts:Array = instrument.split(" ");
+				for each(var part:String in parts) {
+					stripped += part.toLowerCase();
+				}
+				
+				return stripped;
+			}
+			
+			/**
+			 * Draws a thick border to make it look selected.
+			 */
+			private function drawBorder():void {
+				// clear everything
+				graphics.clear();
+				
+				// draw a square
+				if(selected) {
+					graphics.lineStyle(5, 0x777777);
+					graphics.drawRoundRect(0, 0, 80, 80, 12, 12);
+				}
+			}
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<mx:Image source="/assets/images/instrumentSquares/{strip(data.instrumentName)}.jpg" width="100%" height="100%" smoothBitmapContent="true" />
+</s:ItemRenderer>

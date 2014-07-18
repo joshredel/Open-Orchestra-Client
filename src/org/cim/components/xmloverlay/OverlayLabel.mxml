@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:HGroup xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" 
+		 width="45" height="32" click="seek()"
+		 verticalAlign="middle" horizontalAlign="center">
+	
+	<fx:Script>
+		<![CDATA[
+			import org.cim.MixerManager;
+			
+			/**
+			 * The mixer manager that is used to send the start/stop 
+			 * OSC commands to the server.
+			 */
+			private var mixerManager:MixerManager = MixerManager.instance;
+			
+			[Bindable]
+			/**
+			 * The measure that this represents.
+			 */
+			public var data:Measure;
+			
+			/**
+			 * Calls the mixer manager to seek to the time represented by this label.
+			 */
+			private function seek():void {
+				mixerManager.seek(data.time);
+			}
+		]]>
+	</fx:Script>
+	
+	<!-- Background Rounded Rectangle -->
+	<s:Rect width="45" height="32" 
+			radiusX="16" radiusY="16" includeInLayout="false" >
+		<s:fill>
+			<s:SolidColor color="0xE9E9E9" />
+		</s:fill>
+	</s:Rect>
+	
+	<!-- Measure Number Label -->
+	<s:Label id="numberLabel" text="{data.number}" fontSize="16" color="0x333333" />
+</s:HGroup>

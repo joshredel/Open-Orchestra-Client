@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:NavigatorContent xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					xmlns:s="library://ns.adobe.com/flex/spark" 
+					xmlns:mx="library://ns.adobe.com/flex/mx" 
+					xmlns:components="org.cim.components.*"
+					width="1920" height="1080" creationComplete="finish()"
+					show="focusManager.setFocus(emailAddress);password.hand.play();">
+	
+	<fx:Script>
+		<![CDATA[
+			import com.adobe.crypto.MD5;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.managers.FocusManager;
+			import mx.rpc.events.ResultEvent;
+			
+			import org.cim.DataShop;
+			import org.cim.vo.Instrument;
+			import org.cim.vo.User;
+			
+			[Bindable]
+			/**
+			 * The app's data shop.
+			 */
+			private var dataShop:DataShop = DataShop.instance;
+			
+			/**
+			 * The function to be called when the login button is clicked.
+			 */
+			public var loginFunction:Function;
+			
+			/**
+			 * Handles the component creation completing.
+			 * Fetches instruments from the server to display in the instrument list.
+			 * Listens for a user to be saved/signed up.
+			 */
+			private function finish():void {
+				// get instruments
+				dataShop.instrumentService.getParentInstruments();
+				
+				// listen for a user to be saved
+				dataShop.userService.saveUser.addEventListener(ResultEvent.RESULT, processSignupAttempt);
+			}
+			
+			/**
+			 * Attempts to signup the new user based on the information entered.
+			 */
+			private function signup():void {
+				// check for errors
+				var errors:String = "";
+				
+				// email missing
+				if(emailAddress.text == "") {
+					errors += "- No email address entered.\n";
+				} else {
+					// email entered but it's invalid
+					if(emailAddress.text.search("@") == -1) {
+						errors += "- Invalid email address entered.\n";
+					}
+				}
+				
+				// no password
+				if(password.password == "") {
+					errors += "- No gesture entered.\n";
+				} else {
+					// password is not long enough
+					// must have 5 squares minimum
+					if(password.password.length < 10) {
+						errors += "- Gesture is not long enough.\n";
+					}
+				}
+				
+				// no instrument selected
+				if(!instrumentList.getSelectedItem()) {
+					errors += "- No instrument selected.";
+				}
+				
+				// display the message if there were errors
+				if(errors != "") {
+					Alert.show("Please address the following before continuing to sign up:\n" + errors);
+					return;
+				}
+				
+				// get the password
+				// concatenate the password, instrument, and institution
+				var prePassword:String = password.password + instrumentList.getSelectedItem().instrumentName + "McGill";
+				var hashedPassword:String = MD5.hash(prePassword);
+				
+				// create the user
+				
+				// create a false user and send it
+				var user:User = new User();
+				user.email = emailAddress.text;
+				//user.instruments = new ArrayCollection();
+				//user.instruments.addItem(instrumentList.selectedItem as Instrument);
+				//user.instrument = instrumentList.selectedItem as Instrument;
+				user.password = hashedPassword;
+				
+				// send the server the request
+				dataShop.userService.saveUser(user, instrumentList.getSelectedItem().id);
+			}
+			
+			/**
+			 * Handles the result of an attempted login.
+			 * Checks to see if it was good or bad.
+			 */
+			private function processSignupAttempt(event:ResultEvent):void {
+				if(!event.result) {
+					// a null response means that the user repeated the password
+					Alert.show("For security reasons, please try another password.  Perhaps something more elaborate.");
+					password.clean();
+				} else {
+					// clean up
+					cleanup();
+					
+					dataShop.loggedInUser = event.result as User;
+				}
+			}
+			
+			/**
+			 * Attempts to call the login function as defined.
+			 */
+			private function login():void {
+				cleanup();
+				try {
+					loginFunction();
+				} catch(e:Error) {
+					trace("no login function defined");
+				}
+			}
+			
+			/**
+			 * Cleans up the password area and the instrument selection.
+			 */
+			private function cleanup():void {
+				emailAddress.text = "";
+				password.clean();
+				instrumentList.clearSelectedItem();
+			}
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		
+	</fx:Declarations>
+	
+	<s:layout>
+		<s:HorizontalLayout horizontalAlign="center"  
+							paddingTop="50" paddingLeft="50" 
+							paddingRight="50" paddingBottom="50" />
+	</s:layout>
+	
+	<!-- Left Column -->
+	<s:VGroup width="100%">
+		<!-- Invisible quit box -->
+		<!--<s:Group width="150" height="150" click="NativeApplication.nativeApplication.exit();" />-->
+	</s:VGroup>
+	
+	<!-- Centre Column -->
+	<s:Group id="centreColumn" width="{dataShop.appWidth == 1920 ? 1270 : 1070}" height="100%"> <!-- width was 1070 for 1600x900, 1270 for 1920x1080 -->
+		<!-- Box around the edge -->
+		<s:Rect radiusX="8" radiusY="8" width="100%" height="100%">
+			<s:stroke>
+				<s:SolidColorStroke pixelHinting="true"
+									color="0x999999" weight="1" />
+			</s:stroke>
+		</s:Rect>
+		
+		<!-- Title area -->
+		<s:VGroup paddingTop="10" paddingLeft="10">
+			<s:Label text="Open Orchestra" styleName="header" />
+			<s:Label text="Sign up" />
+		</s:VGroup>
+		
+		<!-- Sign up form -->
+		<s:VGroup width="{dataShop.appWidth == 1920 ? 800 : 650}" height="100%" 
+				  x="{dataShop.appWidth == 1920 ? 235 : 210}" horizontalAlign="center" verticalAlign="middle">
+				  <!-- width was 650, x was 210 for 1600x900; width was 800, x was 235 for 1920x1080 -->
+			<s:Label text="Email Address" styleName="header" width="100%" />
+			<s:TextInput id="emailAddress" width="100%" />
+			
+			<mx:Spacer height="25" />
+			
+			<s:Label text="Password" styleName="header" width="100%" />
+			<components:PasswordSwiper id="password" labelStyle="signup" swipingStarted="keyboard.hideKeyboard()" />
+			
+			<mx:Spacer height="25" />
+			
+			<s:Label text="Select your instrument" width="100%" styleName="headerTitleLabel" />
+			<s:Label text="this will become part of your password also" width="100%" />
+			
+			<!-- Instrument List with custom border -->
+			<components:InstrumentScroller id="instrumentList" />
+			
+			<mx:Spacer height="15" />
+			
+			<s:Button label="Sign up and start playing" width="100%" height="40" click="signup()" />
+		</s:VGroup>
+	</s:Group>
+	
+	<!-- Right Column -->
+	<s:VGroup width="100%" horizontalAlign="right">
+		<s:Label text="Already a member?" width="250" />
+		<s:Button label="Login" width="250" height="40" click="login()" />
+	</s:VGroup>
+	
+	<!-- Keyboard -->
+	<components:PopupKeyboard id="keyboard" target="{emailAddress}" includeInLayout="false"
+							  x="{(this.width - keyboard.width) / 2}" 
+							  y="{this.height - keyboard.height}" />
+</s:NavigatorContent>

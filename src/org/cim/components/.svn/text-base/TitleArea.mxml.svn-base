@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:BorderContainer xmlns:fx="http://ns.adobe.com/mxml/2009"
+				   xmlns:s="library://ns.adobe.com/flex/spark"
+				   xmlns:mx="library://ns.adobe.com/flex/mx"
+				   width="400" height="300" creationComplete="finish()"
+				   borderColor="0x999999" borderStyle="inset" borderWeight="1">
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.formatters.DateFormatter;
+			
+			import org.cim.DataShop;
+			import org.cim.PopupManager;
+			
+			[Bindable]
+			/**
+			 * The app's data shop.
+			 */
+			private var dataShop:DataShop = DataShop.instance;
+			
+			/**
+			 * The timer that refreshes the clock.
+			 */
+			private var clockTimer:Timer;
+			
+			/**
+			 * Handles the completion of the creation of the view.
+			 * Prepares a timer to refresh the clock.
+			 */
+			private function finish():void {
+				// prepare and start the clock timer
+				clockTimer = new Timer(1000);
+				clockTimer.addEventListener(TimerEvent.TIMER, refreshTime);
+				clockTimer.start();
+			}
+			
+			/**
+			 * Refreshed the time and date.
+			 */
+			private function refreshTime(event:TimerEvent):void {
+				// create a formatter for the proper type
+				var formatter:DateFormatter = new DateFormatter();
+				formatter.formatString = " MMMM D, YYYY  L:NN A  ||";
+				dateLabel.text = formatter.format(new Date());
+				
+			}
+			
+			/**
+			 * Cleans the home page and logs out.
+			 */
+			private function logout():void {
+				// log the user out!
+				dataShop.logout();
+			}
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<s:layout>
+		<s:HorizontalLayout horizontalAlign="center" verticalAlign="middle" 
+							paddingLeft="12" paddingRight="30" />
+	</s:layout>
+	
+	<s:Label text="Open Orchestra" height="100%" fontWeight="bold" />
+	<mx:Spacer width="100%" />
+	
+	<s:Label text="{(dataShop.loggedInUser.firstName == null ? dataShop.loggedInUser.email : 
+			 dataShop.loggedInUser.firstName + ' ' + dataShop.loggedInUser.lastName)}   |" 
+			 height="100%" fontWeight="bold" />
+	<s:Label id="dateLabel" height="100%" fontWeight="bold" />
+	<s:Label text=" Log Out" height="100%" fontWeight="bold" 
+			 click="logout()" />
+	
+</s:BorderContainer>

@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Window xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  width="3840" height="720"
+		  showStatusBar="false" backgroundColor="0x000000" 
+		  systemChrome="{NativeWindowSystemChrome.NONE}"
+		  creationComplete="position()">
+	
+	<fx:Declarations>
+		
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import flash.utils.flash_proxy;
+			
+			/**
+			 * The video that holds the stream's content.
+			 */
+			private var video:Video;
+			
+			/**
+			 * Handles the creation of this window being completed.
+			 * Positions the window on the last three monitors (assumed 
+			 * to be the three view screens).
+			 */
+			private function position():void {
+				// position and size the window 
+				if(Screen.screens.length < 4) {
+					// there aren't enough screens!
+					// cancel and close this window
+					trace("Not enough screens for proper display.");
+					this.close();
+				} else {
+					// there are enough screens!
+					// spread the window across the array of screens
+					// find the leftmost screen to use as the base position
+					// just make sure to watch here; you may not want to start at screen 0...
+					var leftmostScreen:Screen = Screen.screens[0];
+					for(var i:int = 1; i < 4; i++) {
+						if(Screen.screens[i].bounds.x < leftmostScreen.bounds.x) {
+							leftmostScreen = Screen.screens[i];
+						}
+					}
+					
+					// move to the leftmost screen's bounds
+					this.nativeWindow.x = leftmostScreen.bounds.x;
+					this.nativeWindow.y = leftmostScreen.bounds.y;
+					
+					this.nativeWindow.width = 3840;
+					this.nativeWindow.height = leftmostScreen.bounds.height;
+				}
+			}
+			
+			/**
+			 * Plays the passed video on the screen.
+			 */
+			public function playVideo(stream:NetStream):void {
+				if(Screen.screens.length < 4) {
+					// there aren't enough screens!
+					trace("Not enough screens for three video playback");
+				} else {
+					if(!video) {
+						// create the actual video element to hold the item
+						video = new Video(3840, 720);
+						video.smoothing = false; // MAKE SURE IT'S FALSE! true was causing the horrible stuttering/frame dropping/'glitching' we were seeing
+						video.deblocking = 1;
+						
+						// add it to screen
+						videoHolder.addChild(video);
+					}
+					
+					// attach the stream
+					video.attachNetStream(stream);
+				}
+			}
+			
+			/**
+			 * Cleans up the video display.
+			 */
+			public function cleanVideo():void {
+				if(video) {
+					video.clear();
+				}
+			}
+		]]>
+	</fx:Script>
+	
+	<mx:Image source="/assets/backgrounds/oo_panoramaVI.png" width="3840" height="720" smoothBitmapContent="true" />
+	
+	<mx:UIComponent id="videoHolder" />
+</s:Window>

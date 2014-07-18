@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<components:HomePanel xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					  xmlns:s="library://ns.adobe.com/flex/spark" 
+					  xmlns:mx="library://ns.adobe.com/flex/mx" 
+					  xmlns:components="org.cim.components.*" 
+					  width="400" height="300" title="Messages &amp; Feedback">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<components:PopupMenu width="88%" height="150">
+		<s:Label text="Stay tuned..." styleName="header" />
+		<s:Label text="In the future, Open Orchestra will allow you to record yourself, share these recordings with others, and send messages and feedback to and from your peers." 
+				 width="100%" fontWeight="normal" />
+	</components:PopupMenu>
+	
+</components:HomePanel>

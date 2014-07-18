@@ -1,0 +1,663 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:VGroup xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  xmlns:components="org.cim.components.*"
+		  xmlns:xmloverlay="org.cim.components.xmloverlay.*"
+		  width="400" height="300" render="drawPanel()" 
+		  paddingLeft="40" paddingTop="16" 
+		  paddingRight="40" paddingBottom="16" 
+		  creationComplete="finish()" gap="5">
+	
+	<fx:Script>
+		<![CDATA[
+			import br.com.stimuli.loading.BulkLoader;
+			import br.com.stimuli.loading.BulkProgressEvent;
+			
+			import mx.binding.utils.ChangeWatcher;
+			import mx.controls.Alert;
+			import mx.controls.Image;
+			
+			import org.cim.DataShop;
+			import org.cim.MixerManager;
+			import org.cim.events.ScoreEvent;
+			import org.cim.skins.IconButtonSkin;
+			import org.cim.vo.Score;
+			import org.osmf.events.TimeEvent;
+			
+			import spark.components.NavigatorContent;
+			import spark.components.WindowedApplication;
+			import spark.layouts.VerticalLayout;
+			
+			[Bindable]
+			/**
+			 * The app's data shop.
+			 */
+			private var dataShop:DataShop = DataShop.instance;
+			
+			/**
+			 * The mixer manager that is used to send the start/stop 
+			 * commands to the server.
+			 */
+			private var mixerManager:MixerManager = MixerManager.instance;
+			
+			/**
+			 * The number of tabs that we will have.
+			 */
+			public var tabCount:int = 1;
+			
+			/**
+			 * Whether or not we are tab masks.
+			 */
+			public var drawingTabMasks:Boolean = true;
+			
+			/**
+			 * The connection to the streaming server.
+			 */
+			private var connection:NetConnection;
+			
+			/**
+			 * The RTSP URL customized for this practice session.
+			 */
+			private var rtspUrl:String;
+			
+			/**
+			 * The stream we are viewing.
+			 */
+			private var stream:NetStream;
+			
+			/**
+			 * The connection to the VOD server for the conductor's view.
+			 */
+			private var conductorConnection:NetConnection;
+			
+			/**
+			 * The conductor's view stream that is playing through the conductor connection.
+			 */
+			private var conductorStream:NetStream;
+			
+			/**
+			 * Whether we have preplayed a small clip of the video.
+			 */
+			private var hasPreplayed:Boolean = false;
+			
+			/**
+			 * The last netstatus event that was received.
+			 */
+			private var lastNetStatusEvent:String = "";
+			
+			/**
+			 * Draws the rounded edges and breaks where the tabs of the 
+			 * slider panels appear.
+			 */
+			private function drawPanel():void {
+				var startY:Number;
+				var startX:Number;
+				var distance:Number = SliderPanel.TAB_HEIGHT + SliderPanel.TAB_SEPARATION;
+				var i:int;
+				
+				// make sure our valus are valid
+				this.validateNow();
+				
+				with(graphics) {
+					// prepare
+					startY = 18;
+					startX = this.width;
+					
+					// draw the rounded rectangle
+					clear();
+					beginFill(0xFFFFFF);
+					lineStyle(1, 0x999999);
+					
+					drawRoundRect(0, 0, this.width, this.height, 4, 4);
+					
+					if(drawingTabMasks) {
+						// draw a cover for the tab areas
+						for(i = 0; i < tabCount; i++) {
+							beginFill(0xFFFFFF);
+							lineStyle(0, 0xFFFFFF);
+							
+							drawRect(startX - 4, startY + (i * distance) + 1, 6, SliderPanel.TAB_HEIGHT - 2);
+						}
+					}
+				}
+			}
+			
+			/**
+			 * Handles the completion of the creation of the panel.
+			 * Watches for changes to the current practice session so 
+			 * we can extract the proper score to display. Watches for 
+			 * the score to complete loading so that we can start playing 
+			 * the video.
+			 */
+			private function finish():void {
+				ChangeWatcher.watch(dataShop, "currentPracticeSession", handleNewPracticeSession);
+				scoreStack.addEventListener(ScoreEvent.LOADING_COMPLETE, preplay);
+			}
+			
+			/**
+			 * Handles a change to the current practice session on the user.
+			 * Watches for changes on the practice session's instrument so we can 
+			 * extract the score to play.
+			 */
+			private function handleNewPracticeSession(event:Event):void {
+				// listen for changes to the instrument
+				ChangeWatcher.watch(dataShop.currentPracticeSession, "instrument", handleInstrumentChange)
+				
+				// call the function right away
+				handleInstrumentChange();
+			}
+			
+			/**
+			 * Handles a change to the practie session's instrument.
+			 * Actually extracts the score we want.
+			 */
+			private function handleInstrumentChange(event:Event = null):void {
+				if(dataShop.currentPracticeSession) {
+					// let's clean up first, incase we're changing child instruments inside the same session
+					clean();
+					
+					// loop through each score in the current practice session's
+					// music piece's scores until we find one that matches 
+					// the practice session's instrument
+					for each(var score:Score in dataShop.currentPracticeSession.musicPiece.scores) {
+						if(score.instrument.id == dataShop.currentPracticeSession.instrument.id) {
+							// we found a match
+							// disable play/pause
+							playPauseButton.visible = false;
+							
+							// show the processing icon
+							processingIcon.start();
+							
+							// store it
+							dataShop.currentScore = score;
+							
+							// load the score
+							scoreStack.loadSheetMusic();
+							
+							// request all settings and recordings for this score/user combination
+							// (essentially asks for all settings and all practice recordings for all practice sessions)
+							dataShop.settingService.getAllScoreSettings(dataShop.currentPracticeSession);
+							
+							// end
+							return;
+						}
+					}
+				}
+			}
+			
+			/**
+			 * Preplays the video just enough to put an image on the 
+			 * screen to provide visual feedback that the next step is to play.
+			 */
+			public function preplay(event:Event = null):void {
+				// start "playing".. i.e. starting the video loading process
+				hasPreplayed = false;
+				playPause();
+			}
+			
+			/**
+			 * Plays or pauses the video stream and recording if toggled.
+			 */
+			private function playPause():void {
+				if(connection && connection.connected) {
+					mixerManager.togglePause();
+				} else {
+					// don't let the user click play/pause while we are preloading
+					playPauseButton.visible = false;
+					
+					// show the processing icon
+					processingIcon.start();
+					
+					// create new connections (thus destroying the previous connection/attempts)
+					mixerManager.serverConnection = new NetConnection();
+					
+					// set the server connection's client to this (for remote function calls back to this client)
+					mixerManager.serverConnection.client = this;
+					
+					// get the connection parameters from the database
+					var params:Array = dataShop.currentScore.stream.split("[{}]");
+					
+					// connect to the server for RTSP connection information
+					//mixerManager.serverConnection.connect("rtmp://breakfast.cim.mcgill.ca/oo", params[0], params[1]);
+					mixerManager.serverConnection.connect(dataShop.currentScore.masterServerLocation, params[0], params[1]);
+				}
+			}
+			
+			/**
+			 * Receiver of the remote function call from the server 
+			 * to pass RTSP connection information from the customized
+			 * stream.
+			 */
+			public function setRTSPurl(rtspUrl:String):void {
+				// store the RTSP URL for the stream to connect to
+				this.rtspUrl = rtspUrl;
+				
+				// listen for events to happen on the connection
+				connection = new NetConnection();
+				connection.addEventListener(NetStatusEvent.NET_STATUS, netStatusEventHandler);
+				connection.addEventListener(IOErrorEvent.IO_ERROR, ioEventHandler);
+				connection.addEventListener(SecurityErrorEvent.SECURITY_ERROR, securityEventHandler);
+				connection.addEventListener(AsyncErrorEvent.ASYNC_ERROR, asyncEventHandler);
+				
+				// create the connection client and add the required handlers
+				var connectionClient:Object = new Object();
+				connectionClient.onBWDone = function():void {};
+				connection.client = connectionClient;
+				
+				// connect to the converter connection
+				//connection.connect("rtmp://breakfast.cim.mcgill.ca/rtsptortmp");
+				connection.connect(dataShop.currentScore.conversionServerLocation);
+			}
+			
+			/**
+			 * Handles net status events.
+			 * Plays the desired stream or prints other messages.
+			 */
+			private function netStatusEventHandler(e:NetStatusEvent):void {
+				trace("NetStatus Event Triggered:" + e.info.code);
+				
+				// determine what we want to do
+				switch(e.info.code) {
+					case "NetConnection.Connect.Success":
+						// we connected successfully, so connect to our desired stream
+						finishPlaying();
+						break;
+					
+					case "NetStream.Play.Start":
+						// the video started playing
+						// if we are still waiting to preplay,
+						// toggle the pause and mark that we have preplayed
+						if(!hasPreplayed) {
+							endPreplay();
+						}
+						break;
+					
+					case "NetStream.Buffer.Empty":
+						// the video has stopped playing
+						// if we are currently playing, then the video is over!
+						if(mixerManager.isPlaying) {
+							mixerManager.isPlaying = false;
+							
+							// reset the preplay value
+							hasPreplayed = false;
+							
+							// close all of the connections
+							stream.close();
+							connection.close();
+							mixerManager.serverConnection.close();
+							
+							// reset the play/pause button
+							playPauseButton.reset();
+							
+							// toggle this variable to trick the mixer panel into closing and clearing
+							mixerManager.isConductorViewPlaying = true;
+							mixerManager.isConductorViewPlaying = false;
+							
+							// get a reference to the tri-screen window we use
+							var mainApp:OpenOrchestraClient = this.parentApplication as OpenOrchestraClient;
+							var vidWindow:TriScreenWindow = mainApp.viewWindow;
+							vidWindow.cleanVideo();
+						}
+						
+						break;
+					
+					default:
+						// no handler for the type found;
+				}
+				
+				// store the last net status code
+				lastNetStatusEvent = e.info.code;
+			}
+			
+			/**
+			 * Handles IO errors.
+			 * Traces the error.
+			 */
+			private function ioEventHandler(e:IOErrorEvent):void {
+				trace("IO Event Triggered:" + e.toString())
+			}
+			
+			/**
+			 * Handles security errors.
+			 * Traces the error.
+			 */
+			private function securityEventHandler(e:SecurityErrorEvent):void {
+				trace("Security Event Triggered:" + e.toString());
+			}
+			
+			/**
+			 * Handles async errors.
+			 * Traces the error.
+			 */
+			private function asyncEventHandler(e:SecurityErrorEvent):void {
+				trace("Security Event Triggered:" + e.toString());
+			}
+			
+			/**
+			 * Once a connection has been made, plays the actual video.
+			 */
+			private function finishPlaying():void {
+				// create the net stream for the video and store it!
+				stream = new NetStream(connection);
+				
+				// listen for assorted events
+				stream.addEventListener(NetStatusEvent.NET_STATUS, netStatusEventHandler);
+				stream.addEventListener(IOErrorEvent.IO_ERROR, ioEventHandler);
+				stream.addEventListener(AsyncErrorEvent.ASYNC_ERROR, asyncEventHandler);
+				
+				// setup the stream's client to handle meta data (and other data for testing)
+				var streamClient:Object = new Object();
+				streamClient.onMetaData = metaDataHandler;
+				streamClient.onCuePoint = otherDataHandler;
+				streamClient.onImageData = otherDataHandler;
+				streamClient.onPlayStatus = otherDataHandler;
+				streamClient.onTextData = otherDataHandler;
+				stream.client = streamClient;
+				
+				// set the buffers
+				stream.bufferTime = 2;//0.1;
+				
+				// get a reference to the tri-screen window we use
+				var mainApp:OpenOrchestraClient = this.parentApplication as OpenOrchestraClient;
+				var vidWindow:TriScreenWindow = mainApp.viewWindow;
+				vidWindow.cleanVideo();
+				
+				// play the RTSP video sent from the server
+				vidWindow.playVideo(stream);
+				stream.play(rtspUrl);
+				mixerManager.isPlaying = true;
+			}
+			
+			/**
+			 * Handles metadata arriving on the NetStream client.
+			 * For now does nothing.
+			 */
+			private function metaDataHandler(meta:Object):void {
+				
+			}
+			
+			/**
+			 * Handles other data arriving on the NetStream client.
+			 * For now, does nothing/
+			 */
+			private function otherDataHandler(data:Object):void {
+				
+			}
+			
+			/**
+			 * Ends the preplay after a timer has elapsed.
+			 */
+			private function endPreplay(e:Event = null):void {
+				// toggle the pause
+				hasPreplayed = true;
+				//mixerManager.togglePause(); // included only when preplaying is enabled
+				
+				// hide the processing icon
+				processingIcon.stop();
+				
+				// mark that we are now playing
+				mixerManager.isPlaying = true;
+				
+				// allow them to click play
+				playPauseButton.visible = true;
+				playPauseButton.currentState = "pause"; // included when preplaying is disabled
+			}
+			
+			/**
+			 * Cleans up the display.
+			 */
+			public function clean():void {
+				// close the stream
+				if(stream) {
+					stream.close();
+				}
+				if(connection) {
+					connection.close();
+				}
+				if(mixerManager.serverConnection) {
+					mixerManager.serverConnection.close();
+				}
+				
+				// close the conductor stream/connection
+				if(conductorStream) {
+					conductorStream.close();
+				}
+				if(conductorConnection) {
+					conductorConnection.close();
+				}
+				
+				// reset the play/pause button
+				playPauseButton.reset();
+				
+				// hide the processing icon
+				processingIcon.stop();
+				
+				// clear the score
+				scoreStack.removeAllChildren();
+				
+				// reset the conductor view button
+				mixerManager.isConductorViewPlaying = false;
+				conductorViewButton.selected = false;
+				
+				// cleans the tri-screen window
+				var mainApp:OpenOrchestraClient = this.parentApplication as OpenOrchestraClient;
+				mainApp.viewWindow.cleanVideo();
+			}
+			
+			/**
+			 * Handles a click on the conductors view button.
+			 * Starts playing the conductor's view stream, if it exists.
+			 */
+			private function playConductorsView():void {
+				if(!mixerManager.isConductorViewPlaying) {
+					// nothing playing, so play the stream
+					// cancel any actual streams that are playing
+					if(stream) {
+						stream.close();
+					}
+					if(connection) {
+						connection.close();
+					}
+					if(mixerManager.serverConnection) {
+						mixerManager.serverConnection.close();
+					}
+					
+					// mark that we are playing the conductor stream
+					mixerManager.isPlaying = false;
+					mixerManager.isConductorViewPlaying = true;
+					
+					// disable other video controls
+					playPauseButton.visible = false;
+					
+					// start the processing icon
+					processingIcon.start();
+					
+					// listen for events to happen on the connection
+					conductorConnection = new NetConnection();
+					conductorConnection.addEventListener(NetStatusEvent.NET_STATUS, conductorNetStatusEventHandler);
+					conductorConnection.addEventListener(IOErrorEvent.IO_ERROR, ioEventHandler);
+					conductorConnection.addEventListener(SecurityErrorEvent.SECURITY_ERROR, securityEventHandler);
+					conductorConnection.addEventListener(AsyncErrorEvent.ASYNC_ERROR, asyncEventHandler);
+					
+					// create the connection client and add the required handlers
+					var connectionClient:Object = new Object();
+					connectionClient.onBWDone = function():void {};
+					conductorConnection.client = connectionClient;
+					
+					// get the pieces of the conductor view stream (we want the first... the location of the VOD server)
+					var params:Array = dataShop.currentPracticeSession.musicPiece.conductorsViewStream.split("[{}]");
+					
+					// connect to the converter connection
+					conductorConnection.connect(params[0]);
+				} else {
+					// end the conductor viewing session
+					cleanConductorStream();
+				}
+			}
+			
+			/**
+			 * Handles net status events on the conductor view.
+			 * Plays the desired stream or prints other messages.
+			 */
+			private function conductorNetStatusEventHandler(e:NetStatusEvent):void {
+				trace("Conductor NetStatus Event Triggered:" + e.info.code);
+				
+				// determine what we want to do
+				switch(e.info.code) {
+					case "NetConnection.Connect.Success":
+						// we connected successfully, so connect to our desired stream
+						// create the net stream for the video and store it!
+						conductorStream = new NetStream(conductorConnection);
+						
+						// listen for assorted events
+						conductorStream.addEventListener(NetStatusEvent.NET_STATUS, conductorNetStatusEventHandler);
+						conductorStream.addEventListener(IOErrorEvent.IO_ERROR, ioEventHandler);
+						conductorStream.addEventListener(AsyncErrorEvent.ASYNC_ERROR, asyncEventHandler);
+						
+						// setup the stream's client to handle meta data (and other data for testing)
+						var streamClient:Object = new Object();
+						streamClient.onMetaData = metaDataHandler;
+						streamClient.onCuePoint = otherDataHandler;
+						streamClient.onImageData = otherDataHandler;
+						streamClient.onPlayStatus = otherDataHandler;
+						streamClient.onTextData = otherDataHandler;
+						conductorStream.client = streamClient;
+						
+						// set the buffers
+						conductorStream.bufferTime = 1;//0.1;
+						
+						// get a reference to the tri-screen window we use and clean it
+						var mainApp:OpenOrchestraClient = this.parentApplication as OpenOrchestraClient;
+						var vidWindow:TriScreenWindow = mainApp.viewWindow;
+						vidWindow.cleanVideo();
+						
+						// get the pieces of the conductor view stream (we want the second... the VOD parameter for the video to play)
+						var params:Array = dataShop.currentPracticeSession.musicPiece.conductorsViewStream.split("[{}]");
+						
+						// play the VOD parameter
+						vidWindow.playVideo(conductorStream);
+						conductorStream.play(params[1]);
+						
+						break;
+					
+					case "NetStream.Play.Start":
+						// the video started playing
+						// hide the processing icon
+						processingIcon.stop();
+						
+						break;
+					
+					case "NetStream.Play.Stop":
+						// the video has stopped playing
+						// start playing the main video
+						cleanConductorStream();
+						
+						break;
+					
+					default:
+						// no handler for the type found;
+				}
+			}
+			
+			/**
+			 * Cleans up the conductor viewing session
+			 */
+			private function cleanConductorStream():void {
+				// mark that we are done playing the conductor stream
+				mixerManager.isConductorViewPlaying = false;
+				
+				// close the conductor stream/connection
+				if(conductorStream) {
+					conductorStream.close();
+				}
+				if(conductorConnection) {
+					conductorConnection.close();
+				}
+				
+				// hide the processing icon
+				processingIcon.stop();
+				
+				// cleans the tri-screen window
+				var mainApp:OpenOrchestraClient = this.parentApplication as OpenOrchestraClient;
+				mainApp.viewWindow.cleanVideo();
+				
+				// start playing the actual video
+				preplay();
+			}
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<!-- Title Area -->
+	<s:HGroup width="100%" depth="50" verticalAlign="middle" paddingRight="115">
+		<!--
+		<s:Label text="{dataShop.currentPracticeSession.musicPiece.pieceName}" fontSize="25" fontWeight="bold" />
+		
+		<mx:Spacer width="7" />
+		-->
+		
+		<components:PlayPauseButton id="playPauseButton" width="34" height="34" click="playPause()" visible="false" />
+		
+		<mx:Spacer width="100%" />
+		
+		<!--<s:ButtonBar>
+		<mx:ArrayCollection> 
+		<fx:String>Feedback</fx:String> 
+		<fx:String>Performance Visualization</fx:String>
+		</mx:ArrayCollection> 
+		</s:ButtonBar>-->
+		
+		<!-- Button to show the conductor's view -->
+		<s:ToggleButton id="conductorViewButton" label="Conductor's View" depth="52" fontSize="14" click="playConductorsView()"  
+						visible="{dataShop.currentPracticeSession.musicPiece.conductorsViewStream != null}"
+						skinClass="org.cim.skins.IconButtonSkin" width="155" height="24">
+			
+		</s:ToggleButton>
+	</s:HGroup>
+	
+	<!-- Label for instrument with no children, button for instrument with children -->
+	<s:Label text="{dataShop.currentPracticeSession.instrument.instrumentName}" fontWeight="bold" 
+			 includeInLayout="{dataShop.currentParentInstrument.childInstruments.length == 0}" 
+			 visible="{dataShop.currentParentInstrument.childInstruments.length == 0}" depth="51"
+			 fontSize="14" />
+	<s:Button id="instrumentButton" label="{dataShop.currentPracticeSession.instrument.instrumentName}" 
+			  includeInLayout="{dataShop.currentParentInstrument.childInstruments.length != 0}" 
+			  visible="{dataShop.currentParentInstrument.childInstruments.length != 0}" click="instrumentPopup.toggle()" depth="51"
+			  fontSize="14" />
+	
+	<!-- Button to show the conductor's view -->
+	<!--
+	<mx:Spacer height="15" />
+	<s:ToggleButton id="conductorViewButton" label="Conductor's View" depth="52" fontSize="14" click="playConductorsView()"  
+	visible="{dataShop.currentPracticeSession.musicPiece.conductorsViewStream != null}" />
+	-->
+	
+	<!-- Score Area -->
+	<components:ProcessingIcon id="processingIcon" x="{(this.width - processingIcon.width) / 2}" 
+							   y="{(this.height - processingIcon.height) / 2}" includeInLayout="false" depth="1" />
+	<xmloverlay:ScoreContainer id="scoreStack" y="1" width="{this.width}" height="{this.height - 2}"  
+							   includeInLayout="false" depth="0" />
+	
+	<!-- Page Flip Buttons -->
+	<s:Group x="0" y="0" width="50" height="{this.height}" includeInLayout="false" click="scoreStack.pageDown()">
+		<components:PageArrow x="50" y="{(this.height - 50) / 2}" width="50" direction="{PageArrow.LEFT}" 
+							  enabled="{scoreStack.currentPageNumber != 0}" />
+	</s:Group>
+	<s:Group x="{this.width - 50}" y="0" width="50" height="{this.height}" includeInLayout="false" click="scoreStack.pageUp()">
+		<components:PageArrow x="0" y="{(this.height - 50) / 2}" width="50" direction="{PageArrow.RIGHT}" 
+							  enabled="{scoreStack.currentPageNumber != dataShop.currentScore.fileCount() - 1}" />
+	</s:Group>
+	
+	<!-- Instruments Popup -->
+	<components:PopupMenu id="instrumentPopup" width="200" height="{55 + (30 * dataShop.currentPracticeSession.musicPiece.scoreInstruments.length)}" 
+						  includeInLayout="false" caller="{instrumentButton}">
+		<s:List id="instrumentFilterList" width="100%" height="100%" borderVisible="false"
+				dataProvider="{dataShop.currentPracticeSession.musicPiece.scoreInstruments}"
+				itemRenderer="org.cim.components.ChildInstrumentFilterSelector"/>
+	</components:PopupMenu>
+	
+</s:VGroup>

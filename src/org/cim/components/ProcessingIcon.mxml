@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" 
+		 width="92" height="92" visible="false" alpha="0.7">
+	
+	<fx:Script>
+		<![CDATA[
+			import spark.effects.easing.Linear;
+			
+			/**
+			 * Starts the rotation of the logo.
+			 */
+			public function start():void {
+				this.visible = true;
+				rotator.play();
+			}
+			
+			/**
+			 * Stops the rotation of the logo.
+			 */
+			public function stop():void {
+				rotator.stop();
+				this.visible = false;
+			}
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<s:Linear id="linearEasing" easeInFraction="0" easeOutFraction="0" />
+		<s:Rotate id="rotator" target="{logoImage}" angleBy="4000" duration="20000" easer="{linearEasing}" />
+	</fx:Declarations>
+	
+	<mx:Image id="logoImage" source="/assets/images/logoOnly.png" width="92" height="92" smoothBitmapContent="true" 
+			  transformX="{this.width / 2}" transformY="{this.height / 2}" />
+	
+</s:Group>

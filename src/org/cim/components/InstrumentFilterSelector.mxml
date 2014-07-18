@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:ItemRenderer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" 
+		 width="100%" height="30" click="changeInstrument()" 
+		 creationComplete="finish()">
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.binding.utils.ChangeWatcher;
+			
+			import org.cim.DataShop;
+			import org.cim.vo.Instrument;
+			
+			import spark.components.supportClasses.ListBase;
+			
+			[Bindable]
+			/**
+			 * The app's data shop.
+			 */
+			protected var dataShop:DataShop = DataShop.instance;
+			
+			/**
+			 * Handles the completion of the creation of the renderer.
+			 * Listens for changes to the parent instrument so we can redraw.
+			 */
+			protected function finish():void {
+				ChangeWatcher.watch(dataShop, "currentParentInstrument", forceRefresh);
+			}
+			
+			/**
+			 * Handles a change in the current parent instrument.
+			 * Refreshes the list so the bolding is updated immediately.
+			 */
+			protected function forceRefresh(event:Event):void {
+				nameLabel.setStyle("fontWeight", checkForCurrent(data as Instrument));
+			}
+			
+			/**
+			 * Checks to see if this item is the current parent instrument,
+			 * and if so returns "bold" so that the label stands out.
+			 */
+			protected function checkForCurrent(instrument:Instrument):String {
+				if(dataShop.currentParentInstrument) {
+					if(instrument.id == dataShop.currentParentInstrument.id) {
+						return "bold";
+					} else {
+						return "normal";
+					}
+				} else {
+					return "normal";
+				}
+			}
+			
+//			/**
+//			 * Overrides the display list update function and adds a checkmark if this 
+//			 * item renderer represents the current parent instruemnt.
+//			 */
+//			override protected function updateDisplayList(unscaledWidth:Number, unscaledHeight:Number):void {
+//				super.updateDisplayList(unscaledWidth, unscaledHeight);
+//				
+//				// clean up any check marks
+//				graphics.clear();
+//				
+//				// check if we are the current instrument!
+//				if(checkForCurrent(data as Instrument) == "bold") {
+//					// we are, so add the check
+//					with(graphics) {
+//						lineStyle(2);
+//						moveTo(-15, this.height / 2);
+//						lineTo(-10, this.height);
+//						lineTo(0, 0);
+//					}
+//				}
+//			}
+			
+			/**
+			 * Changes the current parent instrument to the value of this item renderer.
+			 */
+			protected function changeInstrument():void {
+				dataShop.currentParentInstrument = data as Instrument;
+			}
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<s:layout>
+		<s:HorizontalLayout verticalAlign="middle" horizontalAlign="left" />
+	</s:layout>
+	
+	<s:Label id="nameLabel" text="{data.instrumentName}" fontWeight="{checkForCurrent(data as Instrument)}"  />
+</s:ItemRenderer>

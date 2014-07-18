@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<components:HomePanel xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					  xmlns:s="library://ns.adobe.com/flex/spark" 
+					  xmlns:mx="library://ns.adobe.com/flex/mx" 
+					  xmlns:components="org.cim.components.*" 
+					  width="400" height="300" title="Most Recent Activities">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<components:PopupMenu width="88%" height="100">
+		<s:Label text="This is simply a place to keep track of what you have been up to lately on Open Orchestra.  To come soon..." width="100%" />
+	</components:PopupMenu>
+	
+</components:HomePanel>

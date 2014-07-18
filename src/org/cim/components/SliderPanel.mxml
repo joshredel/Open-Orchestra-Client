@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:VGroup xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx" 
+		  width="400" height="300" creationComplete="finish()" 
+		  render="drawPanel()" paddingTop="10" paddingLeft="22" 
+		  paddingBottom="22" paddingRight="22">
+	
+	<fx:Metadata>
+		[DefaultProperty("content")]
+	</fx:Metadata>
+	
+	<fx:Script>
+		<![CDATA[
+			
+			/**
+			 * The sheet music panel that owns this slider panel.
+			 */
+			public var sheetMusicPanelOwner:SheetMusicPanel;
+			
+			[Bindable]
+			/**
+			 * The tab number of the panel.  Starts at 1.
+			 */
+			public var tabNumber:int = 1;
+			
+			/**
+			 * The height of the tab.
+			 */
+			public static const TAB_HEIGHT:Number = 54;
+			
+			/**
+			 * The separation between tabs.
+			 */
+			public static const TAB_SEPARATION:Number = 12;
+			
+			/**
+			 * A list of children to have in the component.
+			 */
+			private var _content:Array;
+			
+			/**
+			 * Set the children of the panel.
+			 */
+			public function set content(newValue:Array):void {
+				_content = newValue;
+			}
+			
+			/**
+			 * Get the children of the panel
+			 */
+			public function get content():Array {
+				return _content;
+			}
+			
+			[Bindable]
+			/**
+			 * The text that appears on the tab of the panel.
+			 */
+			public var label:String = "";
+			
+			/**
+			 * The state of the slider: "open" or "closed".
+			 */
+			private var _sliderState:String = SLIDER_CLOSED;
+			
+			/**
+			 * Sets the state of the slider.
+			 * Opens or closes the slider as assigned.
+			 */
+			public function set sliderState(newState:String):void {
+				// actually open or close the slider 
+				if(newState == SLIDER_OPENED && _sliderState == SLIDER_CLOSED) {
+					// open it
+					slideOut.play();
+				} else if(newState == SLIDER_CLOSED && _sliderState == SLIDER_OPENED) {
+					// close it
+					slideIn.play();
+				}
+				
+				// store the state
+				_sliderState = newState;
+			}
+			
+			/**
+			 * Gets the state of the slider.
+			 */
+			public function get sliderState():String {
+				return _sliderState;
+			}
+			
+			/**
+			 * Constants for the slider state.
+			 */
+			public static const SLIDER_OPENED:String = "opened";
+			public static const SLIDER_CLOSED:String = "closed";
+			
+			/**
+			 * Handles the creation of the panel completing.
+			 * Adds all the items in content to the panel.
+			 */
+			private function finish():void {
+				// don't bother if there's nothing to add
+				if( _content == null ) {
+					return;
+				} else {
+					// loop through all children and add them
+					for each(var element:* in _content) {
+						this.addElement(element);
+					}
+				}
+			}
+			
+			/**
+			 * Draws the rounded edges and the tab on the edge at the 
+			 * height specified.
+			 */
+			private function drawPanel():void {
+				var startY:Number;
+				var startX:Number;
+				
+				// make sure our valus are valid
+				this.validateNow();
+				
+				with(graphics) {
+					// prepare
+					startY = (tabNumber - 1) * (TAB_HEIGHT + TAB_SEPARATION);
+					startX = this.width;
+					
+					// draw the rounded rectangle
+					clear();
+					beginFill(0xFFFFFF);
+					lineStyle(1, 0x999999);
+					
+					drawRoundRect(0, 0, this.width, this.height, 4, 4);
+					
+					// draw the tabbed area
+					beginFill(0xFFFFFF);
+					lineStyle(1, 0x999999);
+					
+					moveTo(startX, startY);
+					lineTo(startX + 102, startY);
+					lineTo(startX + 118, startY + TAB_HEIGHT / 2);
+					lineTo(startX + 102, startY + TAB_HEIGHT);
+					lineTo(startX, startY + TAB_HEIGHT);
+					
+					// draw a cover for the tab area
+					beginFill(0xFFFFFF);
+					lineStyle(0, 0xFFFFFF);
+					
+					drawRect(startX - 4, startY + 1, 6, TAB_HEIGHT - 2);
+				}
+			}
+			
+			/**
+			 * Slides the tab out or in, depeneding on its current state.
+			 */
+			protected function toggleSlide():void {
+				// toggle the state
+				if(_sliderState == SLIDER_OPENED) {
+					sliderState = SLIDER_CLOSED;
+				} else {
+					sliderState = SLIDER_OPENED;
+				}
+			}
+			
+			/**
+			 * Starts the sliding out of the slider panel.
+			 * Moves it in front of the other tabs and tells 
+			 * the owning sheet to redraw.
+			 */
+			private function prepareSlideOut():void {
+				// move forward
+				this.depth = 50;
+				
+				// request the owner to redraw
+				if(sheetMusicPanelOwner) {
+					sheetMusicPanelOwner.drawingTabMasks = false;
+					sheetMusicPanelOwner.invalidateDisplayList();
+				}
+			}
+			
+			/**
+			 * Ends the sliding in of the slider panel.
+			 * Moves it behind the other tabs and tells the 
+			 * owning sheet to redraw.
+			 */
+			private function finishSlideIn():void {
+				// move backward
+				this.depth = 0;
+				
+				// request the owner to redraw
+				if(sheetMusicPanelOwner) {
+					sheetMusicPanelOwner.drawingTabMasks = true;
+					sheetMusicPanelOwner.invalidateDisplayList();
+				}
+			}
+			
+			/**
+			 * Closes the slider if it is opened.
+			 */
+			public function closePanel():void {
+				if(sliderState == SLIDER_OPENED) {
+					toggleSlide();
+				}
+			}
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<s:Move id="slideOut" target="{this}" xBy="{this.width}" yBy="0" effectStart="prepareSlideOut()" />
+		<s:Move id="slideIn" target="{this}" xBy="{-this.width}" yBy="0" effectEnd="finishSlideIn()" />
+	</fx:Declarations>
+	
+	<s:VGroup x="{this.width}" y="{(tabNumber - 1) * (TAB_HEIGHT + TAB_SEPARATION)}" width="102" 
+			  height="{TAB_HEIGHT}" includeInLayout="false" verticalAlign="middle" horizontalAlign="center"
+			  click="toggleSlide()">
+		<s:Label text="{label}" textAlign="center" fontWeight="bold" />
+	</s:VGroup>
+	
+</s:VGroup>

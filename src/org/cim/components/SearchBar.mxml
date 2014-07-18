@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:BorderContainer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				   xmlns:s="library://ns.adobe.com/flex/spark" 
+				   xmlns:mx="library://ns.adobe.com/flex/mx" 
+				   width="288" height="32" borderColor="0x999999"
+				   borderStyle="solid" borderWeight="1" cornerRadius="16">
+	
+	<fx:Script>
+		<![CDATA[
+			
+			/**
+			 * Handles a focus in.
+			 * Clears the text and makes it black.
+			 */
+			private function handleFocusIn():void {
+				// clear the search text if the text is "Search"
+				if(textInput.text == "Search") {
+					textInput.text = "";
+				}
+				
+				// make the text black
+				textInput.setStyle("color", "0x000000");
+			}
+			
+			/**
+			 * Handles a focus out.
+			 * Replaces search text if nothing there and grays 
+			 * the colour.
+			 */
+			private function handleFocusOut():void {
+				// replace the text if it's blank
+				if(textInput.text == "") {
+					textInput.text = "Search";
+				}
+				
+				// make the text gray
+				textInput.setStyle("color", "0x666666");
+			}
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<s:layout>
+		<s:HorizontalLayout paddingTop="4" paddingLeft="8" paddingBottom="4" 
+							paddingRight="16" verticalAlign="middle" />
+	</s:layout>
+	
+	<mx:Image source="/assets/images/search.png" width="20" height="20" 
+			  smoothBitmapContent="true" alpha="0.3" />
+	
+	<s:TextInput id="textInput" width="100%" height="100%" text="Search" borderVisible="false" 
+				 focusIn="handleFocusIn()" focusOut="handleFocusOut()" focusEnabled="false" 
+				 paddingTop="0" focusRect="false" color="0x666666" fontSize="18" />
+</s:BorderContainer>

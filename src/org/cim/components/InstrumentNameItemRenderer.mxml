@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:ItemRenderer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				xmlns:s="library://ns.adobe.com/flex/spark"
+				xmlns:mx="library://ns.adobe.com/flex/mx"
+				height="20" mouseEnabled="false" focusEnabled="false" 
+				creationComplete="finish()">
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.binding.utils.ChangeWatcher;
+			
+			import org.cim.DataShop;
+			import org.cim.vo.Instrument;
+			
+			[Bindable]
+			/**
+			 * The app's data shop.
+			 */
+			private var dataShop:DataShop = DataShop.instance;
+			
+			/**
+			 * Handles the completion of the creation of the renderer.
+			 * Listens for changes to the parent instrument so we can redraw.
+			 */
+			private function finish():void {
+				ChangeWatcher.watch(dataShop, "currentParentInstrument", forceRefresh);
+			}
+			
+			/**
+			 * Handles a change in the current parent instrument.
+			 * Refreshes the list so the bolding is updated immediately.
+			 */
+			private function forceRefresh(event:Event):void {
+				nameLabel.setStyle("fontWeight", checkForCurrent(data as Instrument));
+			}
+			
+			/**
+			 * Checks to see if this item is the current parent instrument,
+			 * and if so returns "bold" so that the label stands out.
+			 */
+			private function checkForCurrent(instrument:Instrument):String {
+				if(dataShop.currentParentInstrument) {
+					if(instrument.instrumentName == dataShop.currentParentInstrument.instrumentName) {
+						return "bold";
+					} else {
+						return "normal";
+					}
+				} else {
+					return "normal";
+				}
+			}
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<s:layout>
+		<s:HorizontalLayout verticalAlign="middle" horizontalAlign="left" />
+	</s:layout>
+	
+	<s:Label id="nameLabel" text="{data.instrumentName}" fontWeight="{checkForCurrent(data as Instrument)}" />
+</s:ItemRenderer>

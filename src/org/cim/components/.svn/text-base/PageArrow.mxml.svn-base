@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" 
+		 width="400" height="300" render="drawArrow()" 
+		 creationComplete="finish()">
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.binding.utils.ChangeWatcher;
+			
+			/**
+			 * The direction the arrow is facing.
+			 */
+			public var direction:String;
+			
+			/**
+			 * Constants for the direction of the arrow.
+			 */
+			public static const RIGHT:String = "right";
+			public static const LEFT:String = "left";
+			
+			/**
+			 * Handles the completion of the creation of the arrow.
+			 * Listens for changes to enabled
+			 */
+			private function finish():void {
+				// listen for changes to the enable state
+				ChangeWatcher.watch(this, "enabled", drawArrow);
+			}
+			
+			
+			/**
+			 * Draws the actual arrow.
+			 */
+			private function drawArrow(event:Event = null):void {
+				// change alpha depending on enabled state
+				var alpha:Number = (this.enabled ? 1.0 : 0.5);
+				
+				with(graphics) {
+					// prepare
+					clear();
+					lineStyle(1, 0x999999, alpha);
+					beginFill(0xDDDDDD, alpha);
+					
+					// draw
+					if(direction == PageArrow.LEFT) {
+						moveTo(0, 0);
+						lineTo(0, 30);
+						lineTo(-30, 15);
+						lineTo(0, 0);
+					} else {
+						moveTo(0, 0);
+						lineTo(0, 30);
+						lineTo(30, 15);
+						lineTo(0, 0);
+					}
+				}
+			}
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+</s:Group>

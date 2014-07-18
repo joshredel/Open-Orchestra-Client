@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					   xmlns:s="library://ns.adobe.com/flex/spark" 
+					   xmlns:mx="library://ns.adobe.com/flex/mx"
+					   xmlns:views="org.cim.views.*"
+					   showStatusBar="false" width="1920" height="1080"
+					   applicationComplete="finish()" frameRate="60">
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.binding.utils.ChangeWatcher;
+			
+			import org.cim.DataShop;
+			import org.cim.components.TriScreenWindow;
+			
+			[Bindable]
+			/**
+			 * The app's data shop.
+			 */
+			private var dataShop:DataShop = DataShop.instance;
+			
+			/**
+			 * The external window spread accross the three view screens.
+			 */
+			public var viewWindow:TriScreenWindow;
+			
+			/**
+			 * Handles the application completing its loading process.
+			 * Puts the application full screen and prepares all window
+			 * arrangements.
+			 */
+			private function finish():void {
+				// store the screen size
+				dataShop.appWidth = Screen.mainScreen.bounds.width;
+				
+				// change the screen size of the application
+				this.width = dataShop.appWidth;
+				this.height = (dataShop.appWidth == 1920 ? 1080 : 900);
+				
+				// open the window
+				viewWindow = new TriScreenWindow();
+				viewWindow.open(false);
+				
+				// add a handler for the app becoming active... full screen it!
+				NativeApplication.nativeApplication.addEventListener(Event.ACTIVATE, handleActivate);
+				
+				// watch for changes to the logged in user
+				ChangeWatcher.watch(dataShop, "loggedInUser", handleUserChange);
+			}
+			
+			/**
+			 * Handles an activate event.
+			 * Makes the application full screen if it is not already in that state.
+			 */
+			private function handleActivate(event:Event):void {
+				// if the app isn't full screen, make it full screen
+				if(stage.displayState != StageDisplayState.FULL_SCREEN_INTERACTIVE) {
+					stage.displayState = StageDisplayState.FULL_SCREEN_INTERACTIVE;
+				}
+			}
+			
+			/**
+			 * Handles a change in the logged in user.
+			 * Changes the view to reflect being logged in or logged out.
+			 */
+			public function handleUserChange(event:Event):void {
+				if(dataShop.loggedInUser) {
+					// change to the home view
+					views.selectedChild = homeView;
+				} else {
+					// change to the selection view
+					views.selectedChild = selectionView;
+				}
+			}
+			
+			/**
+			 * Switches the view to the signup view.
+			 */
+			public function switchToSignup():void {
+				views.selectedChild = signupView;
+			}
+			
+			/**
+			 * Switches the view to the login view.
+			 */
+			public function switchToLogin():void {
+				// attempt a login right away with a system default user
+				//views.selectedChild = loginView;
+				dataShop.userService.attemptLogin("6d3356dd67b89c9e9486c7035d0b57df");
+			}
+			
+			/**
+			 * Switches the view to the play view.
+			 */
+			public function switchToPlay():void {
+				views.selectedChild = playView;
+			}
+			
+			/**
+			 * Switches the view to the home view.
+			 */
+			public function switchToHome():void {
+				views.selectedChild = homeView;
+			}
+		]]>
+	</fx:Script>
+	
+	<fx:Style source="assets/styles/oo.css" />
+	
+	<fx:Declarations>
+		<s:Parallel id="scaleOut" duration="800">
+			<s:Fade alphaFrom="1.0" alphaTo="0.0" />
+			<s:Move3D zFrom="0" zTo="1200" />
+		</s:Parallel>
+		
+		<s:Parallel id="scaleIn" duration="800">
+			<s:Fade alphaFrom="0.0" alphaTo="1.0" />
+			<s:Move3D zFrom="-1200" zTo="0" />
+		</s:Parallel>
+	</fx:Declarations>
+	
+	<mx:ViewStack id="views" creationPolicy="all" resizeToContent="true" clipContent="false" width="100%" height="100%">
+		<views:SelectionView id="selectionView" signupFunction="{switchToSignup}" loginFunction="{switchToLogin}" showEffect="{scaleIn}" hideEffect="{scaleOut}" />
+		<views:LoginView id="loginView" signupFunction="{switchToSignup}"  showEffect="{scaleIn}" hideEffect="{scaleOut}" />
+		<views:SignupView id="signupView" loginFunction="{switchToLogin}" showEffect="{scaleIn}" hideEffect="{scaleOut}" />
+		<views:HomeView id="homeView" playFunction="{switchToPlay}" showEffect="{scaleIn}" hideEffect="{scaleOut}" />
+		<views:PlayView id="playView" homeFunction="{switchToHome}" showEffect="{scaleIn}" hideEffect="{scaleOut}" />
+	</mx:ViewStack>
+</s:WindowedApplication>

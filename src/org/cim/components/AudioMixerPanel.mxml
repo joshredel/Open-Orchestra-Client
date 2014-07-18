@@ -1,0 +1,399 @@
+<?xml version="1.0" encoding="utf-8"?>
+<components:SliderPanel xmlns:fx="http://ns.adobe.com/mxml/2009" 
+						xmlns:s="library://ns.adobe.com/flex/spark" 
+						xmlns:mx="library://ns.adobe.com/flex/mx" 
+						xmlns:components="org.cim.components.*" 
+						label="Audio Mixer" creationComplete="finish()">
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.binding.utils.ChangeWatcher;
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.rpc.events.ResultEvent;
+			
+			import org.cim.DataShop;
+			import org.cim.MixerManager;
+			import org.cim.events.SettingEvent;
+			import org.cim.vo.Mixer;
+			import org.cim.vo.PracticeSession;
+			import org.cim.vo.Setting;
+			
+			[Bindable]
+			/**
+			 * The app's data shop.
+			 */
+			private var dataShop:DataShop = DataShop.instance;
+			
+			[Bindable]
+			/**
+			 * The current setting displayed in the mixer.
+			 */
+			private var _currentSetting:Setting;
+			
+			[Bindable]
+			/**
+			 * Sets the current setting displayed in the mixer.
+			 */
+			public function set currentSetting(setting:Setting):void {
+				if(setting) {
+					// store the setting
+					_currentSetting = setting;
+					
+					// start a new dictionary to map ids to levels
+					levelDictionary = new Dictionary();
+					soloMuteDictionary = new Dictionary();
+					
+					// parse through the setting mixer data
+					var pairs:Array = setting.mixerData.split(";");
+					for each(var pair:String in pairs) {
+						// split the id and the level
+						var values:Array = pair.split(":");
+						
+						// add it to the dictionary
+						levelDictionary[int(values[0])] = Number(values[1]);
+						
+						// if there is a third part, it is for solo/mute
+						if(values.length > 2 && values[2] != "") {
+							soloMuteDictionary[int(values[0])] = String(values[2]);
+						}
+					}
+					
+					// reload the mixers
+					loadMixers();
+				}
+			}
+			
+			/**
+			 * Gets the current setting displayed in the mixer.
+			 */
+			public function get currentSetting():Setting {
+				return _currentSetting;
+			}
+			
+			/**
+			 * A dictionary of mixer id to level.
+			 */
+			private var levelDictionary:Dictionary;
+			
+			/**
+			 * A dictionary of mixer id to preset solo/mute.
+			 */
+			private var soloMuteDictionary:Dictionary;
+			
+			[Bindable]
+			/**
+			 * The mixer manager that controls messages to OSC.
+			 */
+			private var mixerManager:MixerManager = MixerManager.instance;
+			
+			[Bindable]
+			/**
+			 * A collection of the settings for the current score.
+			 */
+			private var settings:ArrayCollection;
+			
+			/**
+			 * Handles the completion of the creation of the panel.
+			 * Watches for changes to the music piece so that we can 
+			 * load its mixers.
+			 */
+			private function finish():void {
+				// listen for a setting event on the setting dropdown
+				settingsButton.addEventListener(SettingEvent.SETTING_SELECTED, handleSettingChange);
+				
+				// listen for changes to the practice session
+				ChangeWatcher.watch(dataShop, "currentScore", loadMixers);
+				
+				// listen for the results of the settings call to come in
+				dataShop.settingService.getAllScoreSettings.addEventListener(ResultEvent.RESULT, prepareSettingsCollection);
+				
+				// fetch the new settings for the menu once the save is complete
+				dataShop.settingService.saveSetting.addEventListener(ResultEvent.RESULT, function(event:ResultEvent):void {
+					// clear the field
+					settingComboBox.textInput.text = "";
+					
+					// fetch the data
+					dataShop.settingService.getAllScoreSettings(dataShop.currentPracticeSession);
+					
+					// set the current setting to the setting we just saved
+					currentSetting = event.result as Setting;
+				});
+			}
+			
+			/**
+			 * Handles a change in the current practice session.
+			 * Loads the mixers from the practice session's 
+			 * score into display.
+			 */
+			public function loadMixers(event:Event = null):void {
+				if(dataShop.currentScore) {
+					// mark to the mixer that we're starting to load
+					mixerManager.loading = true;
+					
+					// remove all old sliders
+					mixerGroup.removeAllElements();
+					
+					// create a collection to send to the mixer manager
+					var sliders:ArrayCollection = new ArrayCollection();
+					
+					// sort the mixers by ordering
+					var mixers:Array = dataShop.currentScore.mixers.toArray();
+					mixers.sortOn("ordering");
+					
+					// loop through each mixer in the score
+					for each(var mixer:Mixer in mixers) {
+						// create a new mixer slider
+						var slider:MixerSlider = new MixerSlider();
+						slider.data = mixer;
+						sliders.addItem(slider);
+						
+						// add it to the display
+						mixerGroup.addElement(slider);
+					}
+					
+					// set up the mixer manager
+					mixerManager.mixerSliders = sliders;
+					
+					// now that the mixer manager has prepared the mixers to send data, send the setting volumes
+					var mixerSlider:MixerSlider;
+					for each(mixerSlider in sliders) {
+						// pull its value from the dictionary
+						if(levelDictionary) {
+							mixerSlider.level = levelDictionary[mixerSlider.data.id];
+						}
+					}
+					
+					// mark to mute the reference instrument if the current setting is the default
+					var forceMuteReference:Boolean = false;
+					if(currentSetting.settingName == "Default") {
+						forceMuteReference = true;
+					}
+					
+					// loop through and toggle preset mute/solo options
+					for each(mixerSlider in sliders) {
+						// mute the reference if marked as such
+						if(mixerSlider.data.isReferenceInstrument && forceMuteReference) {
+							// mute it
+							mixerSlider.toggleMute();
+							
+							// toggle the button if it isn't
+							if(!mixerSlider.muteButton.selected) {
+								mixerSlider.muteButton.selected = true;
+							}
+							
+							// skip the next part, as it won't have any effect
+							continue;
+						}
+						
+						// pull defaulted solo/mute from the dictionary
+						if(soloMuteDictionary && soloMuteDictionary[mixerSlider.data.id]) {
+							if(soloMuteDictionary[mixerSlider.data.id] == "M") {// && !mixerSlider.data.isReferenceInstrument) {
+								// it was saved muted, so mute this mixer
+								mixerSlider.toggleMute();
+								
+								// toggle the button if it isn't
+								if(!mixerSlider.muteButton.selected) {
+									mixerSlider.muteButton.selected = true;
+								}
+							}
+							if(soloMuteDictionary[mixerSlider.data.id] == "S") {
+								// it was saved soloed, so solo this mixer
+								mixerSlider.toggleSolo();
+								
+								// toggle the button if it wasn't
+								if(!mixerSlider.soloButton.selected) {
+									mixerSlider.soloButton.selected = true;
+								}
+							}
+						}
+					}
+					
+					// make sure the settings list has at least this score's default in it
+					if(!settings) {
+						settings = new ArrayCollection();
+						settings.addItem(dataShop.currentScore.defaultSetting);
+					}
+					
+					// mark that the mixers are clean
+					mixerManager.loading = false;
+				}
+			}
+			
+			/**
+			 * Handles a return from the getAllScoreSettings call.
+			 * Prepares a collection of the settings.
+			 */
+			private function prepareSettingsCollection(event:ResultEvent):void {
+				// (re)initialize and add the score's default setting first
+				settings = new ArrayCollection();
+				if(dataShop.currentScore) {
+					settings.addItem(dataShop.currentScore.defaultSetting);
+				}
+				
+				// now add all of the settings that just came in
+				settings.addAll(new ArrayCollection(event.result as Array));
+				
+				// check if the current setting is still in the collection
+				var found:Boolean = false;
+				for each(var setting:Setting in settings) {
+					if(setting.id == currentSetting.id) {
+						// it is still in the collection, so we can mark it as found
+						found = true;
+						break;
+					}
+				}
+				
+				// if it wasn't found, change the current setting to the default
+				if(!found) {
+					currentSetting = dataShop.currentScore.defaultSetting;
+				}
+			}
+			
+			/**
+			 * Handles a click on the Save button.
+			 * Creates a new mixer setting and saves it to the database.
+			 */
+			private function saveMixerSetting():void {
+				// check to see if we're updating an existing setting or creating a new one
+				if(settingComboBox.selectedIndex == ComboBox.CUSTOM_SELECTED_ITEM || settingComboBox.textInput.text == "") {
+					// it's a new setting
+					// make sure there is a name entered
+					if(settingComboBox.textInput.text == "" || settingComboBox.textInput.text == "Name for new mixer settings") {
+						Alert.show("Oops!  Make sure to enter a name for the mixer setting and try again.");
+						return;
+					}
+					
+					// create the value object to store it
+					var newSettings:Setting = new Setting();
+					newSettings.settingName = settingComboBox.textInput.text;
+					newSettings.mixerData = generateMixerDate();
+					newSettings.startingPoint = 0;
+					newSettings.endingPoint = 0;
+					newSettings.practiceSession = dataShop.currentPracticeSession;
+					
+					// associate it to the current practice session and save!
+					dataShop.settingService.saveSetting(newSettings);
+				} else {
+					// it's an existing setting
+					// get it and update it's information
+					var updatedSetting:Setting = settingComboBox.selectedItem as Setting;
+					updatedSetting.practiceSession = dataShop.currentPracticeSession;
+					
+					// compose and store the mixer information
+					updatedSetting.mixerData = generateMixerDate();
+					
+					// save it!
+					dataShop.settingService.saveSetting(updatedSetting);
+				}
+			}
+			
+			/**
+			 * Handles a click on a setting in the setting drop down.
+			 * Sets the current setting to the one passed in the event
+			 */
+			private function handleSettingChange(event:SettingEvent):void {
+				// must set _currentSetting to null first in order to allow the user 
+				// to click on a setting that is already the current setting
+				_currentSetting = null;
+				currentSetting = event.setting;
+			}
+			
+			/**
+			 * Helper function.
+			 * Generates the storable mixer information for database storage.
+			 */
+			private function generateMixerDate():String {
+				// pull the id number and level for each mixer in that is currently used
+				var mixerData:String = "";
+				for each(var slider:MixerSlider in mixerManager.mixerSliders) {
+					// get the id and level
+					mixerData += slider.data.id + ":" + slider.level + ":";
+					
+					// get the mute or solo status
+					if(slider.isMuted) {
+						mixerData += "M";
+					}
+					if(slider.soloingState == MixerSlider.SOLOING_ON_SOLOING) {
+						mixerData +="S";
+					}
+					
+					// finish the mixer
+					mixerData += ";"
+				}
+				
+				// remove the trailing semicolon
+				mixerData = mixerData.substr(0, mixerData.length - 1);
+				
+				return mixerData;
+			}
+			
+			/**
+			 * Dummy function to place "Settings" in the settings drop down 
+			 * regardless of the setting selected to keep consistent with our 
+			 * interface.
+			 */
+			private function settingToDropDown(setting:Setting):String {
+				return "Settings";
+			}
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<s:HGroup width="100%" paddingBottom="20">
+		<s:VGroup>
+			<s:Label text="{dataShop.currentPracticeSession.musicPiece.pieceName}" styleName="header" paddingBottom="-8" />
+			<s:Label text="by {dataShop.currentPracticeSession.musicPiece.composer}" />
+		</s:VGroup>
+		
+		<mx:Spacer width="100%" />
+		
+		<s:Button label="Done" click="toggleSlide()" />
+	</s:HGroup>
+	
+	<s:VGroup id="mixerGroup" width="100%" height="100%" paddingRight="100" gap="30" />
+	
+	<mx:Spacer height="100%" />
+	
+	<!-- Settings Area -->
+	<s:Line width="100%">
+		<s:stroke>
+			<s:SolidColorStroke color="0x999999" />
+		</s:stroke>
+	</s:Line>
+	
+	<mx:Spacer height="8" />
+	
+	<s:HGroup width="100%" verticalAlign="middle" paddingLeft="10">
+		<!--<s:Button id="settingsButton" label="Settings" width="250" click="settingsPopup.toggle()" />-->
+		<s:DropDownList id="settingsButton" labelField="settingName" width="370" labelFunction="{settingToDropDown}" 
+						itemRenderer="org.cim.components.SettingItemRenderer" dataProvider="{settings}" 
+						prompt="Settings" selectionColor="0xFFFFFF" rollOverColor="0xFFFFFF" />
+		<!-- selectedItem="@{currentSetting}"  -->
+						<!--change="currentSetting = settingsButton.selectedItem as Setting" -->
+		<s:Label text="currently set to" verticalAlign="bottom" visible="{!mixerManager.isDirty}" />
+		<s:Label text="{_currentSetting.settingName}" fontWeight="bold" verticalAlign="bottom" visible="{!mixerManager.isDirty}" />
+	</s:HGroup>
+	
+	<mx:Spacer height="8" />
+	
+	<s:Label text="Save new mixer settings as:" visible="{mixerManager.isDirty}" paddingLeft="10" />
+	<s:HGroup width="100%" paddingRight="80" verticalAlign="middle" visible="{mixerManager.isDirty}" paddingLeft="10">
+		<s:ComboBox id="settingComboBox" width="370" maxChars="40" prompt="Enter a new name or select from this list"
+					dataProvider="{new ArrayCollection(dataShop.settingService.getAllScoreSettings.lastResult)}" 
+					labelField="settingName" />
+		<s:Button label="Save" click="saveMixerSetting()" />
+	</s:HGroup>
+	
+	<!-- Settings Popup --> <!-- FIX TO SHOW ON TOP OF EVERYTHING INSTEAD OF UNDER THE SCORE -->
+	<!--<components:PopupMenu id="settingsPopup" width="300" includeInLayout="false" caller="{settingsButton}"
+						  height="{55 + (30 * settings.length)}">
+		<s:List id="settingsFilterList" width="100%" height="100%" borderVisible="false" 
+				dataProvider="{settings}" itemRenderer="org.cim.components.SettingItemRenderer" 
+				click="currentSetting = settingsFilterList.selectedItem as Setting" />
+	</components:PopupMenu>-->
+	
+</components:SliderPanel>

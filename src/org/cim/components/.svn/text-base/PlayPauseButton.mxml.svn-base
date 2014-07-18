@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" 
+		 width="300" height="300" render="drawButton()" 
+		 click="toggleStates()">
+	
+	<fx:Script>
+		<![CDATA[
+			
+			/**
+			 * Draws the circle with the play button in the center.
+			 */
+			private function drawButton():void {
+				this.validateNow();
+				
+				with(graphics) {
+					// prepare
+					clear();
+					//lineStyle(1, 0x999999, 0.80);
+					
+					// draw the outer circle
+					beginFill(0x444444);//0xAAAAAA);
+					drawCircle(this.width / 2, this.height / 2, this.width / 2);
+					endFill();
+					
+					if(currentState == "play") {
+						// draw the play button;
+						beginFill(0xEEEEEE);
+						moveTo((this.width / 2) - (0.17 * this.width), (this.width / 2) - (0.28 * this.height));
+						lineTo((this.width / 2) - (0.17 * this.width), (this.width / 2) + (0.28 * this.height));
+						lineTo((this.width / 2) + (0.34 * this.width), this.width / 2);
+						lineTo((this.width / 2) - (0.17 * this.width), (this.width / 2) - (0.28 * this.height));
+					} else {
+						// draw the pause button
+						beginFill(0xEEEEEE);
+						drawRect((this.width / 2) - (this.width * 0.04) - (0.15 * this.width), 
+							(this.height / 2) - (this.height * 0.25), 
+							0.15 * this.width, 
+							0.5 * this.height);
+						drawRect((this.width / 2) + (this.width * 0.06), 
+							(this.height / 2) - (this.height * 0.25), 
+							0.15 * this.width, 
+							0.5 * this.height);
+					}
+				}
+			}
+			
+			/**
+			 * Toggles between the play and pause state and redraws accordingly.
+			 */
+			private function toggleStates():void {
+				if(currentState == "play") {
+					currentState = "pause";
+				} else {
+					currentState = "play";
+				}
+				
+				// redraw
+				drawButton();
+			}
+			
+			/**
+			 * Resets to the play state.
+			 */
+			public function reset():void {
+				currentState = "play";
+				drawButton();
+			}
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<s:State name="play" />
+		<s:State name="pause" />
+	</fx:Declarations>
+</s:Group>

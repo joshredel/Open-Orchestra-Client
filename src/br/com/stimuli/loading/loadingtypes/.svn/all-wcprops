@@ -1,0 +1,53 @@
+K 25
+svn:wc:ra_dav:version-url
+V 120
+/sresvn/src/!svn/ver/3754/openorchestra/OpenOrchestra%20Client%20Opera%20Release/src/br/com/stimuli/loading/loadingtypes
+END
+LoadingItem.as
+K 25
+svn:wc:ra_dav:version-url
+V 135
+/sresvn/src/!svn/ver/3754/openorchestra/OpenOrchestra%20Client%20Opera%20Release/src/br/com/stimuli/loading/loadingtypes/LoadingItem.as
+END
+ImageItem.as
+K 25
+svn:wc:ra_dav:version-url
+V 133
+/sresvn/src/!svn/ver/3754/openorchestra/OpenOrchestra%20Client%20Opera%20Release/src/br/com/stimuli/loading/loadingtypes/ImageItem.as
+END
+VideoItem.as
+K 25
+svn:wc:ra_dav:version-url
+V 133
+/sresvn/src/!svn/ver/3754/openorchestra/OpenOrchestra%20Client%20Opera%20Release/src/br/com/stimuli/loading/loadingtypes/VideoItem.as
+END
+JSONItem.as
+K 25
+svn:wc:ra_dav:version-url
+V 132
+/sresvn/src/!svn/ver/3754/openorchestra/OpenOrchestra%20Client%20Opera%20Release/src/br/com/stimuli/loading/loadingtypes/JSONItem.as
+END
+XMLItem.as
+K 25
+svn:wc:ra_dav:version-url
+V 131
+/sresvn/src/!svn/ver/3754/openorchestra/OpenOrchestra%20Client%20Opera%20Release/src/br/com/stimuli/loading/loadingtypes/XMLItem.as
+END
+BinaryItem.as
+K 25
+svn:wc:ra_dav:version-url
+V 134
+/sresvn/src/!svn/ver/3754/openorchestra/OpenOrchestra%20Client%20Opera%20Release/src/br/com/stimuli/loading/loadingtypes/BinaryItem.as
+END
+URLItem.as
+K 25
+svn:wc:ra_dav:version-url
+V 131
+/sresvn/src/!svn/ver/3754/openorchestra/OpenOrchestra%20Client%20Opera%20Release/src/br/com/stimuli/loading/loadingtypes/URLItem.as
+END
+SoundItem.as
+K 25
+svn:wc:ra_dav:version-url
+V 133
+/sresvn/src/!svn/ver/3754/openorchestra/OpenOrchestra%20Client%20Opera%20Release/src/br/com/stimuli/loading/loadingtypes/SoundItem.as
+END

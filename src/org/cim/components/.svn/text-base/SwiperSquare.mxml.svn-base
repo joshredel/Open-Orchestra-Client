@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" 
+		 width="106.25" height="106.25"
+		 mouseMove="handleMouseOver()">
+	
+	<fx:Metadata>
+		[Event(name="swipe", type="flash.events.Event")]
+	</fx:Metadata>
+	
+	<fx:Script>
+		<![CDATA[
+			[Bindable]
+			/**
+			 * The value this square stores for use in passwords.
+			 */
+			public var passwordValue:String;
+			
+			/**
+			 * Indicates whether or not the square has been swiped for password use.
+			 */
+			private var _hasBeenSwiped:Boolean = false;
+			
+			public function get hasBeenSwiped():Boolean {
+				return _hasBeenSwiped;
+			}
+			
+			public function set hasBeenSwiped(newValue:Boolean):void {
+				// store the value
+				_hasBeenSwiped = newValue;
+				
+				// reset the image if we are setting the swiped value to false
+				if(_hasBeenSwiped == false) {
+					emptySquare();
+				}
+			}
+			
+			/**
+			 * Handles a mouse over.
+			 * Changes to the filled looking state.
+			 */
+			private function handleMouseOver(event:Event = null):void {
+				if(!hasBeenSwiped) {
+					// mark that we have swiped the square
+					hasBeenSwiped = true;
+					
+					// send our value as an event dispatch
+					this.dispatchEvent(new Event("swipe"));
+				}
+			}
+			
+			/**
+			 * "Fills" the square.
+			 */
+			public function fillSquare():void {
+				//this.currentState = "Filled";
+				empty.visible = false;
+				filled.visible = true;
+			}
+			
+			/**
+			 * Empties the square.
+			 */
+			public function emptySquare():void {
+				//this.currentState = "Empty";
+				filled.visible = false;
+				empty.visible = true;
+			}
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+	</fx:Declarations>
+	
+	<mx:Image id="empty" source="/assets/images/squareEmpty.png" width="100%" height="100%" smoothBitmapContent="true" />
+	<mx:Image id="filled" source="/assets/images/squareFilled.png" width="100%" height="100%" smoothBitmapContent="true" visible="false" />
+</s:Group>

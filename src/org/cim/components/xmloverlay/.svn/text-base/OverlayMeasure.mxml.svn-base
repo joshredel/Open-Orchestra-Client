@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx"
+		 width="{data.measureWidth - 3}" height="{MEASURE_HEIGHT}" 
+		 alpha="0.01" click="seek()">
+	
+	<fx:Script>
+		<![CDATA[
+			import org.cim.MixerManager;
+			
+			/**
+			 * The mixer manager that is used to send the start/stop 
+			 * OSC commands to the server.
+			 */
+			private var mixerManager:MixerManager = MixerManager.instance;
+			
+			[Bindable]
+			/**
+			 * The measure that this represents.
+			 */
+			public var data:Measure;
+			
+			/**
+			 * The height of a measure.
+			 */
+			private const MEASURE_HEIGHT:Number = 40;
+			
+			/**
+			 * Calls the mixer manager to seek to the time represented by this label.
+			 */
+			private function seek():void {
+				mixerManager.seek(data.time);
+			}
+		]]>
+	</fx:Script>
+	
+</s:Group>

@@ -1,0 +1,23 @@
+K 25
+svn:wc:ra_dav:version-url
+V 119
+/sresvn/src/!svn/ver/3754/openorchestra/OpenOrchestra%20Client%20Opera%20Release/src/br/com/stimuli/loading/lazyloaders
+END
+LazyJSONLoader.as
+K 25
+svn:wc:ra_dav:version-url
+V 137
+/sresvn/src/!svn/ver/3754/openorchestra/OpenOrchestra%20Client%20Opera%20Release/src/br/com/stimuli/loading/lazyloaders/LazyJSONLoader.as
+END
+LazyBulkLoader.as
+K 25
+svn:wc:ra_dav:version-url
+V 137
+/sresvn/src/!svn/ver/3754/openorchestra/OpenOrchestra%20Client%20Opera%20Release/src/br/com/stimuli/loading/lazyloaders/LazyBulkLoader.as
+END
+LazyXMLLoader.as
+K 25
+svn:wc:ra_dav:version-url
+V 136
+/sresvn/src/!svn/ver/3754/openorchestra/OpenOrchestra%20Client%20Opera%20Release/src/br/com/stimuli/loading/lazyloaders/LazyXMLLoader.as
+END

@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:NavigatorContent xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					xmlns:s="library://ns.adobe.com/flex/spark" 
+					xmlns:mx="library://ns.adobe.com/flex/mx" 
+					width="100%" height="100%" creationComplete="wait()">
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.core.UIComponent;
+			
+			import spark.components.Label;
+			
+			[Bindable]
+			/**
+			 * The bitmap data representing the sheet music image.
+			 */
+			public var imageBitmap:Bitmap;
+			
+			/**
+			 * The page layout as described by the MusicXML.
+			 */
+			public var pageLayout:PageLayout;
+			
+			/**
+			 * Current x we are drawing at.
+			 */
+			private var runningX:int;
+			
+			/**
+			 * Current y we are drawing at.
+			 */
+			private var runningY:int;
+			
+			/**
+			 * The systems that are part of this page.
+			 */
+			public var systems:Array = new Array();
+			
+			/**
+			 * The height of a measure.
+			 */
+			private const MEASURE_HEIGHT:Number = 40;
+			
+			/**
+			 * Waits a small period of time before drawing the overlay.
+			 */
+			private function wait():void {
+				var timer:Timer = new Timer(500, 1);
+				timer.addEventListener(TimerEvent.TIMER_COMPLETE, draw);
+				timer.start();
+			}
+			
+			/**
+			 * Draws the overlay for this page based on its elements.
+			 */
+			private function draw(event:Event = null):void {
+				// if we don't have a page layout or there are no systems, just exit now
+				if(!pageLayout || systems.length == 0) {
+					return;
+				}
+				
+				// create a sprite to draw everything in
+				var overlayHolder:UIComponent = new UIComponent();
+				this.addElement(overlayHolder);
+				var overlay:Sprite = new Sprite();
+				overlayHolder.addChild(overlay);
+				
+				// draw the systems and their measures
+				var runningY:int = pageLayout.topSystemDistance;
+				
+				for(var i:int = 0; i < systems.length; i++) {
+					// check if there is a special layout for this system
+					var firstMeasure:Measure = systems[i].measures[0] as Measure;
+					var addedLeftMargin:int = 0;
+					var addedRightMargin:int = 0;
+					if(firstMeasure.systemLayout) {
+						// there is a special layout addition to the standard amounts
+						if(firstMeasure.systemLayout.hasOwnProperty("system-margins")) {
+							// check for left margins
+							if(firstMeasure.systemLayout['system-margins'].hasOwnProperty("left-margin")) {
+								addedLeftMargin = firstMeasure.systemLayout['system-margins']['left-margin'];
+							}
+							
+							// check for right margins
+							if(firstMeasure.systemLayout['system-margins'].hasOwnProperty("right-margin")) {
+								addedRightMargin = firstMeasure.systemLayout['system-margins']['right-margin'];
+							}
+						}
+						
+						// check for a different top system distance (it's the top system
+						if(firstMeasure.systemLayout.hasOwnProperty("top-system-distance")) {
+							// override the set amount
+							runningY = parseInt(firstMeasure.systemLayout['top-system-distance']);
+						} else {
+							// we're not the first measure on the page, but the first in another system
+							if(firstMeasure.systemLayout && firstMeasure.systemLayout.hasOwnProperty("system-distance")) {
+								runningY += parseInt(firstMeasure.systemLayout['system-distance']) + MEASURE_HEIGHT;
+							} else {
+								runningY += pageLayout.systemDistance + MEASURE_HEIGHT;
+							}
+						}
+					}
+					
+					// draw the measures in this system
+					var runningX:int = pageLayout.pageMargins.left + pageLayout.systemMargins.left + addedLeftMargin;
+					for each(var measure:Measure in systems[i].measures) {
+						// add an interactive measure number
+						var label:OverlayLabel = new OverlayLabel();
+						overlayHolder.addChild(label);
+						label.data = measure;
+						label.x = runningX - (label.width / 2) + 10;
+						label.y = pageLayout.pageMargins.top + runningY - 40;
+						
+						// draw an overlay
+						var overlayMeasure:OverlayMeasure = new OverlayMeasure();
+						overlayHolder.addChild(overlayMeasure);
+						overlayMeasure.data = measure;
+						overlayMeasure.x = runningX;
+						overlayMeasure.y = pageLayout.pageMargins.top + runningY;
+						
+						// increment the next x position
+						runningX += measure.measureWidth;
+					}
+				}
+				
+				// resize to fit the score
+				this.validateNow();
+				overlayHolder.scaleX = overlayHolder.scaleY = sheetMusic.height / pageLayout.pageHeight;
+				
+				// center the overlay
+				overlayHolder.x = (this.width / 2) - ((pageLayout.pageWidth * overlayHolder.scaleX) / 2);
+			}
+		]]>
+	</fx:Script>
+	
+	<!--<s:layout>
+		<s:VerticalLayout gap="0" horizontalAlign="center"/>
+	</s:layout>-->
+	
+	<mx:Image id="sheetMusic" source="{imageBitmap}" width="100%" height="100%" smoothBitmapContent="true" 
+			  verticalAlign="middle" horizontalAlign="center" />
+</s:NavigatorContent>

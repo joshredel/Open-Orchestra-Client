@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:NavigatorContent xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					xmlns:s="library://ns.adobe.com/flex/spark" 
+					xmlns:mx="library://ns.adobe.com/flex/mx" 
+					xmlns:components="org.cim.components.*"
+					width="100%" height="100%" creationComplete="finish()" 
+					show="getData()" hide="cleanUp()">
+	
+	<fx:Script>
+		<![CDATA[
+			import com.adobe.utils.DateUtil;
+			
+			import org.cim.DataShop;
+			import org.cim.PopupManager;
+			import org.cim.vo.Genre;
+			import org.cim.vo.PracticeSession;
+			
+			[Bindable]
+			/**
+			 * The app's data shop.
+			 */
+			private var dataShop:DataShop = DataShop.instance;
+			
+			[Bindable]
+			/**
+			 * The function to be called when we want to switch to the play view.
+			 */
+			public var playFunction:Function;
+			
+			/**
+			 * Handles the completion of the creation of the view.
+			 * Sets the genre to 'all genres'.
+			 */
+			private function finish():void {
+				// set the current genre as all genres
+				var allGenres:Genre = new Genre();
+				allGenres.id = 0;
+				allGenres.genreName = Genre.ALL_GENRES;
+				dataShop.currentGenre = allGenres;
+			}
+			
+			/**
+			 * Handles the panel being shown.
+			 * Gets data so it's up to date.
+			 */
+			private function getData():void {
+				// database fetches
+				dataShop.instrumentService.getParentInstruments();
+				dataShop.musicPieceService.getMusicPieces();
+				dataShop.genreService.getGenres();
+			}
+			
+			/**
+			 * Cleans the home page.
+			 */
+			private function cleanUp():void {
+				// clean everything up first!
+				searchBar.textInput.text = "";
+				//keyboard.hideKeyboard();
+				var popupManager:PopupManager = PopupManager.instance;
+				popupManager.closeAllPopups();
+			}
+			
+			/**
+			 * Attempts to switch to the play view.
+			 */
+			private function goToPlayView():void {
+				try {
+					playFunction();
+				} catch(e:Error) {
+					trace("no play function defined");
+				}
+			}
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		
+	</fx:Declarations>
+	
+	<s:layout>
+		<s:VerticalLayout gap="0" />
+	</s:layout>
+	
+	<!-- Title Area (title, clock, logout) -->
+	<components:TitleArea width="100%" height="24" />
+	
+	<!-- Home/Search Area -->
+	<s:BorderContainer width="100%" height="54" borderColor="0x999999"
+					   borderStyle="inset" borderWeight="1">
+		<s:layout>
+			<s:HorizontalLayout horizontalAlign="center" verticalAlign="middle" 
+								paddingLeft="12" paddingRight="30" />
+		</s:layout>
+		
+		<components:HomeButton enabled="false" />
+		
+		<mx:Spacer width="100%" />
+		
+		<components:SearchBar id="searchBar" />
+	</s:BorderContainer>
+	
+	<!-- Columns -->
+	<s:HGroup gap="0" width="100%" height="100%">
+		<!-- Left Column (messages & feedback and most recent activities) -->
+		<s:VGroup width="{dataShop.appWidth == 1920 ? 650 : 520}" height="100%" paddingTop="6" paddingLeft="6" paddingRight="6"
+				  paddingBottom="6" verticalAlign="top" horizontalAlign="center" gap="12"> <!-- width was 520 for 1600x900, 650 for 1920x1080 -->
+			<components:MessagesFeedbackPanel id="messagesFeedbackPanel" width="100%" height="55%" />
+			<components:RecentActivitiesPanel id="recentActivitiesPanel" width="100%" height="45%" />
+		</s:VGroup>
+		
+		<!-- Main Column (library) -->
+		<s:VGroup width="100%" height="100%" paddingTop="6" paddingLeft="6" paddingRight="6"
+				  paddingBottom="6" verticalAlign="top" horizontalAlign="center">
+			<components:LibraryPanel id="libraryPanel" width="100%" height="100%" playFunction="{playFunction}" />
+		</s:VGroup>
+	</s:HGroup>
+	
+	<!-- Keyboard -->
+	<!--<components:PopupKeyboard id="keyboard" target="{searchBar.textInput}" includeInLayout="false"
+							  x="{(this.width - keyboard.width) / 2}" 
+							  y="{this.height - keyboard.height}" />-->
+	
+</s:NavigatorContent>

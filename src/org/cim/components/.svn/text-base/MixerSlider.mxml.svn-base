@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:VGroup xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx"
+		 xmlns:components="org.cim.components.*"
+		 width="100%" 
+		 scaleX="{dataShop.appWidth == 1920 ? 1 : 0.9}"
+		 scaleY="{dataShop.appWidth == 1920 ? 1 : 0.9}">
+	
+	<fx:Metadata>
+		[Event(name="levelChanged", type="org.cim.events.MixerEvent")]
+		[Event(name="toggleSolo", type="org.cim.events.MixerEvent")]
+		[Event(name="toggleMute", type="org.cim.events.MixerEvent")]
+	</fx:Metadata>
+	
+	<fx:Script>
+		<![CDATA[
+			import flash.text.engine.RenderingMode;
+			
+			import org.cim.DataShop;
+			import org.cim.events.MixerEvent;
+			import org.cim.skins.HSliderSkin;
+			import org.cim.vo.Mixer;
+			
+			[Bindable]
+			/**
+			 * The app's data shop.
+			 */
+			private var dataShop:DataShop = DataShop.instance;
+			
+			[Bindable]
+			/**
+			 * The mixer this slider represents.
+			 */
+			public var data:Mixer;
+			
+			[Bindable]
+			/**
+			 * The level at which the mixer is set.
+			 */
+			private var _level:Number;
+			
+			/**
+			 * Gets the level at which the mixer is set.
+			 */
+			public function get level():Number {
+				return levelSlider.value;
+			}
+			
+			/**
+			 * Sets the level at which the mixer is set.
+			 */
+			public function set level(newLevel:Number):void {
+				// set the slider to the value
+				_level = newLevel;
+				
+				// send it to the server
+				changeLevel();
+			}
+			
+			[Bindable]
+			/**
+			 * The current state of this mixer with regards to soloing.
+			 * TODO: enforce only three possible types.
+			 */
+			public var soloingState:String = SOLOING_OFF;
+			
+			/**
+			 * Possible value for the soloing state.
+			 * Soloing is on, and this mixer is soloing.
+			 */
+			public static const SOLOING_ON_SOLOING:String = "soloingOnSoloing";
+			
+			/**
+			 * Possible value for the soloing state.
+			 * Soloing is on, and this mixer is not currently soloing.
+			 */
+			public static const SOLOING_ON_NOT_SOLOING:String = "soloingOnNotSoloing";
+			
+			/**
+			 * Possible value for the soloing state.
+			 * Soloing is off all together.
+			 */
+			public static const SOLOING_OFF:String = "soloingOff";
+			
+			[Bindable]
+			/**
+			 * Whether or not the mixer is currently muted.
+			 */
+			public var isMuted:Boolean = false;
+			
+			/**
+			 * Formats the mixer data tip to show '## dB'.
+			 */
+			private function formatSliderDataTip(value:Number):String {
+				return value + " dB";
+			}
+			
+			/**
+			 * Handles a change of value on the level slider.
+			 * Dispatches a level changed event.
+			 */
+			private function changeLevel():void {
+				if(!isNaN(levelSlider.value)) {
+					this.dispatchEvent(new MixerEvent(MixerEvent.LEVEL_CHANGED, data, levelSlider.value));
+				}
+			}
+			
+			/**
+			 * Handles a click on the solo button.
+			 * Dispatches a toggle solo event.
+			 */
+			public function toggleSolo():void {
+				this.dispatchEvent(new MixerEvent(MixerEvent.TOGGLE_SOLO, data));
+			}
+			
+			/**
+			 * Handles a click on the mute button.
+			 * Dispatches a toggle mute event.
+			 */
+			public function toggleMute():void {
+				this.dispatchEvent(new MixerEvent(MixerEvent.TOGGLE_MUTE, data));
+			}
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<s:Label text="{data.sectionName + (data.isReferenceInstrument ? ' (this position is filled by you)' : '')}" fontWeight="bold" />
+	<s:HGroup paddingLeft="10" width="100%" verticalAlign="middle">
+		<s:VGroup gap="10">
+			<s:ToggleButton id="soloButton" label="solo" click="toggleSolo()" fontSize="14" enabled="{!isMuted}" height="30" />
+			<s:ToggleButton id="muteButton" label="mute" click="toggleMute()" fontSize="14" enabled="{soloingState == MixerSlider.SOLOING_OFF}" height="30" />
+		</s:VGroup>
+		
+		<mx:Spacer width="10" />
+		
+		<mx:Image source="/assets/images/quiet.png" width="30" height="30" smoothBitmapContent="true" 
+				  click="level = levelSlider.minimum" enabled="{!(isMuted || soloingState == MixerSlider.SOLOING_ON_NOT_SOLOING)}" 
+				  alpha="{(!(isMuted || soloingState == MixerSlider.SOLOING_ON_NOT_SOLOING)) ? 0.85 : 0.5}" />
+		
+		<mx:Spacer width="4" />
+		
+		<s:HSlider id="levelSlider" width="100%" height="18" minimum="-6" maximum="6" 
+				   showDataTip="true" dataTipFormatFunction="{formatSliderDataTip}"  
+				   enabled="{!(isMuted || soloingState == MixerSlider.SOLOING_ON_NOT_SOLOING)}"
+				   value="{_level}" change="changeLevel()" skinClass="org.cim.skins.HSliderSkin" />
+				   <!-- minimum="-60" maximum="6" dataTipPrecision="0"-->
+		
+		<mx:Spacer width="4" />
+		
+		<mx:Image source="/assets/images/loud.png" width="30" height="30" smoothBitmapContent="true" 
+				  click="level = levelSlider.maximum" enabled="{!(isMuted || soloingState == MixerSlider.SOLOING_ON_NOT_SOLOING)}" 
+				  alpha="{(!(isMuted || soloingState == MixerSlider.SOLOING_ON_NOT_SOLOING)) ? 0.85 : 0.5}" />
+	</s:HGroup>
+</s:VGroup>

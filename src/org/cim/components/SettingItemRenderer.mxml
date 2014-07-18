@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:ItemRenderer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				xmlns:s="library://ns.adobe.com/flex/spark" 
+				xmlns:mx="library://ns.adobe.com/flex/mx"
+				width="100%" height="30" mouseDown="triggerSettingChange(event)">
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.rpc.events.ResultEvent;
+			
+			import org.cim.DataShop;
+			import org.cim.events.SettingEvent;
+			import org.cim.vo.Setting;
+			
+			[Bindable]
+			/**
+			 * The app's data shop.
+			 */
+			private var dataShop:DataShop = DataShop.instance;
+			
+			/**
+			 * Handles a click on the component.
+			 * Sends an event to the parent to inform it a selection has been made
+			 */
+			private function triggerSettingChange(event:MouseEvent):void {
+				this.owner.dispatchEvent(new SettingEvent(SettingEvent.SETTING_SELECTED, data as Setting, true));
+			}
+			
+			/**
+			 * Handles a click on the delete button.
+			 * Deletes this setting.
+			 */
+			private function deleteSetting(event:MouseEvent):void {
+				// stop the event from propogating to a mouse down event for the entire item renderer
+				event.stopImmediatePropagation();
+				
+				// delete the setting
+				dataShop.settingService.deleteSetting(data as Setting);
+				
+				// listen to the delete to complete so we can refresh
+				dataShop.settingService.deleteSetting.addEventListener(ResultEvent.RESULT, function(event:ResultEvent):void {
+					dataShop.settingService.getAllScoreSettings(dataShop.currentPracticeSession);
+				});
+			}
+		]]>
+	</fx:Script>
+	
+	<s:layout>
+		<s:HorizontalLayout verticalAlign="middle" horizontalAlign="left" paddingLeft="6" paddingRight="6" />
+	</s:layout>
+	
+	<s:Label id="nameLabel" text="{data.settingName}" />
+	
+	<s:Spacer width="100%" />
+	
+	<s:Button id="deleteButton" label="X" mouseDown="deleteSetting(event)" 
+			  fontSize="10" fontWeight="bold" width="30" height="22" 
+			  visible="{data.settingName != 'Default'}" />
+	
+</s:ItemRenderer>

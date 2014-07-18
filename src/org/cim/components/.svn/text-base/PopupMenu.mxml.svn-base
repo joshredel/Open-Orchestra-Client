@@ -1,0 +1,265 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" 
+		 width="400" height="300" preinitialize="drawBorder()" 
+		 render="drawBorder()" creationComplete="finish()"
+		 showEffect="{fadeIn}" hideEffect="{fadeOut}">
+	
+	<fx:Metadata>
+		[DefaultProperty("content")]
+	</fx:Metadata>
+	
+	<fx:Script>
+		<![CDATA[
+			import flash.filters.DropShadowFilter;
+			
+			import mx.core.UIComponent;
+			import mx.events.FlexEvent;
+			
+			import org.cim.DataShop;
+			import org.cim.PopupManager;
+			
+			[Bindable]
+			/**
+			 * The app's data shop.
+			 */
+			private var dataShop:DataShop = DataShop.instance;
+			
+			/**
+			 * The instance of the popup manager.
+			 */
+			private var popupManager:PopupManager = PopupManager.instance;
+			
+			/**
+			 * A list of children to have in the component.
+			 */
+			private var _content:Array;
+			
+			/**
+			 * Set the children of the popup.
+			 */
+			public function set content(newValue:Array):void {
+				_content = newValue;
+			}
+			
+			/**
+			 * Gets the children of the popup.
+			 */
+			public function get content():Array {
+				return _content;
+			}
+			
+			/**
+			 * The object that calls this popup. Used 
+			 * to position the popup when it opens.
+			 */
+			private var _caller:UIComponent;
+			
+			/**
+			 * Set the object that calls this popup.
+			 */
+			public function set caller(newValue:UIComponent):void {
+				_caller = newValue;
+				this.visible = false;
+				//caller.addEventListener(FlexEvent.CREATION_COMPLETE, position);
+			}
+			
+			/**
+			 * Gets the object that calls this popup.
+			 */
+			public function get caller():UIComponent {
+				return _caller;
+			}
+			
+			/**
+			 * Information about where the tip of the point should be drawn.
+			 * It is the distance from the x coordinate to the centre of 
+			 * where the tip should be.
+			 */
+			private var tipDistance:Number;
+			
+			/**
+			 * Draws the border around the edge with a pointed indicator.
+			 */
+			private function drawBorder():void {
+				// draw the border
+				with(graphics) {
+					clear();
+					lineStyle(1, 0x999999);
+					beginFill(0xFFFFFF);
+					moveTo(0, 15);
+					
+					// draw to the calculated tip, if present
+					if(caller && tipDistance) {
+						lineTo(tipDistance - 15, 15);
+						lineTo(tipDistance, 0);
+						lineTo(tipDistance + 15, 15);
+					} else {
+						lineTo(0.6 * this.width, 15);
+						lineTo(0.6 * this.width + 15, 0);
+						lineTo(0.6 * this.width + 30, 15);
+					}
+					
+					lineTo(this.width, 15);
+					lineTo(this.width, this.height);
+					lineTo(0, this.height);
+					lineTo(0, 15);
+					endFill();
+				}
+			}
+			
+			/**
+			 * Handles the creation of the popup completing.
+			 * Positions and adds all the items in content to the popup..
+			 */
+			private function finish():void {
+				// add it to the popup manager!
+				if(caller) {
+					popupManager.addPopup(this);
+				}
+				
+				// don't bother with content if there's nothing to add
+				if(_content == null ) {
+					return;
+				} else {
+					// loop through all children and add them
+					for each(var element:* in _content) {
+						this.addElement(element);
+					}
+				}
+				
+				// listen for mouse down on stage
+				if(stage) {
+					addMouseDownListener();
+					transferChild();
+				} else {
+					this.callLater(addMouseDownListener);
+					this.callLater(transferChild);
+				}
+			}
+			
+			/**
+			 * Adds a stage mouse down listener if we weren't ready 
+			 * to do so earlier.
+			 */
+			private function addMouseDownListener():void {
+				if(caller) {
+					stage.addEventListener(MouseEvent.MOUSE_DOWN, close);
+				}
+			}
+			
+			/**
+			 * Transfers the child from the current parent to the stage.
+			 */
+			private function transferChild():void {
+				// remove from the current parent and add to the stage
+				if(caller) {
+					//stage.addChild(this);
+				}
+			}
+			
+			/**
+			 * Toggles the popup in and out of view.
+			 */
+			public function toggle():void {
+				// only position it if it is going to be visible
+				if(!this.visible) {
+					position();
+				}
+				this.visible = !this.visible;
+			}
+			
+			/**
+			 * Handles a mouse down event on the stage.
+			 * Closes the popup if the mouse is down outside of the popup.
+			 */
+			public function close(event:MouseEvent = null):void {
+				this.visible = false;
+			}
+			
+			/**
+			 * Handles the popup being displayed.
+			 * Positions the popup based on the location of the caller.
+			 */
+			private function position(event:Event = null):void {
+				//return;
+				
+				// this function desperately needs fixing...
+				// the issue is simply that the caller object normally has a layout based position (it is
+				// positioned relative to the objects around it) whereas the popup needs to be 
+				// absolutely layed out because it is not included in the layout.
+				// is there a means of getting the position of an automatically layed out caller?
+				
+				if(caller) {
+					// make sure our information is up to date
+					this.validateNow();
+					caller.validateNow();
+					
+					// get the caller's direct parent
+					var callerParent:UIComponent = caller.parent as UIComponent;
+					
+					// convert the caller's coordinates into global coordinates
+					var bottomCentreOfCaller:Point = callerParent.contentToGlobal(new Point(caller.x, caller.y));
+					
+					// find the bottom centre of the caller
+					bottomCentreOfCaller.x += caller.width / 2;
+					bottomCentreOfCaller.y += caller.height;
+					
+					// calculate the new position of the tip in global frame of reference
+					// it should be in the centered on the caller
+					var newX:int = bottomCentreOfCaller.x - (this.width / 2);
+					var newY:int = bottomCentreOfCaller.y;
+					
+					// make sure it is within the stage bounds
+					if(!stage) {
+						this.callLater(position);
+						return;
+					}
+					if(newX < 0) {
+						// it will be outside the stage to the left, so move it
+						newX = 2;
+					}
+					if(newX + this.width > stage.width - 8) {
+						// it will be outside the stage, so move it
+						// the 8 is for padding so we can see the dropshadow
+						newX -= (newX + this.width) - dataShop.appWidth + 8; //stage.width + 8;
+					}
+					if(newY + this.height > (dataShop.appWidth == 1920 ? 1080 : 900)) {
+						// it will be outside the stage, so move it
+						// the 8 is for padding so we can see the dropshadow
+						newY -= (newY + this.height) - (dataShop.appWidth == 1920 ? 1080 : 900) + 8;//stage.height + 8;
+					}
+					
+					// save the tip location
+					tipDistance = bottomCentreOfCaller.x - newX;
+					
+					// convert this point back to content FoR
+					var newLocation:Point = this.parentDocument.globalToContent(new Point(newX, newY));
+					
+					// position!
+					this.x = newLocation.x;
+					this.y = newLocation.y;
+					
+					// redraw the border
+					drawBorder();
+				}
+			}
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<s:Fade id="fadeIn" duration="300" alphaFrom="{this.alpha}" alphaTo="1" />
+		<s:Fade id="fadeOut" duration="300" alphaFrom="{this.alpha}" alphaTo="0" />
+	</fx:Declarations>
+	
+	<s:filters>
+		<s:DropShadowFilter alpha="45" blurX="6" blurY="6" distance="4" color="0x666666" />
+	</s:filters>
+	
+	<s:layout>
+		<s:VerticalLayout paddingTop="35" paddingLeft="20" paddingRight="20" 
+						  paddingBottom="20" verticalAlign="middle" />
+	</s:layout>
+	
+</s:Group>

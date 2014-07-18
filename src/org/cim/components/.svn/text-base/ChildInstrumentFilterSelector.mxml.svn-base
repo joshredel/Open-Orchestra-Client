@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:ItemRenderer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				xmlns:s="library://ns.adobe.com/flex/spark" 
+				xmlns:mx="library://ns.adobe.com/flex/mx" 
+				width="100%" height="30" click="changeInstrument()" 
+				creationComplete="finish()">
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.binding.utils.ChangeWatcher;
+			
+			import org.cim.DataShop;
+			import org.cim.vo.Instrument;
+			
+			import spark.components.supportClasses.ListBase;
+			
+			[Bindable]
+			/**
+			 * The app's data shop.
+			 */
+			protected var dataShop:DataShop = DataShop.instance;
+			
+			/**
+			 * Handles the completion of the creation of the renderer.
+			 * Listens for changes to the parent instrument so we can redraw.
+			 */
+			protected function finish():void {
+				forceRefresh();
+				ChangeWatcher.watch(dataShop.currentPracticeSession, "instrument", forceRefresh);
+			}
+			
+			/**
+			 * Handles a change in the current parent instrument.
+			 * Refreshes the list so the bolding is updated immediately.
+			 */
+			protected function forceRefresh(event:Event = null):void {
+				nameLabel.setStyle("fontWeight", checkForCurrent(data as Instrument))
+			}
+			
+			/**
+			 * Checks to see if this item is the current parent instrument,
+			 * and if so returns "bold" so that the label stands out.
+			 */
+			protected function checkForCurrent(instrument:Instrument):String { 
+				if(instrument && dataShop.currentPracticeSession && dataShop.currentPracticeSession.instrument) {
+					if(instrument.id == dataShop.currentPracticeSession.instrument.id) {
+						return "bold";
+					} else {
+						return "normal";
+					}
+				} else {
+					return "normal";
+				}
+			}
+			
+			/**
+			 * Changes the current parent instrument to the value of this item renderer.
+			 */
+			protected function changeInstrument():void {
+				dataShop.currentPracticeSession.instrument = data as Instrument;
+			}
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<s:layout>
+		<s:HorizontalLayout verticalAlign="middle" horizontalAlign="left" />
+	</s:layout>
+	
+	<s:Label id="nameLabel" text="{data.instrumentName}" fontWeight="{checkForCurrent(data as Instrument)}"  />
+</s:ItemRenderer>

@@ -1,0 +1,375 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:ViewStack xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			  xmlns:s="library://ns.adobe.com/flex/spark" 
+			  xmlns:mx="library://ns.adobe.com/flex/mx" 
+			  width="100%" height="100%" creationPolicy="all"
+			  selectedIndex="{currentPageNumber}">
+	
+	<fx:Metadata>
+		[Event(name="loadingComplete", type="org.cim.events.ScoreEvent")]
+	</fx:Metadata>
+	
+	<fx:Script>
+		<![CDATA[
+			import br.com.stimuli.loading.BulkLoader;
+			import br.com.stimuli.loading.BulkProgressEvent;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Image;
+			
+			import org.cim.DataShop;
+			import org.cim.MixerManager;
+			import org.cim.events.ScoreEvent;
+			
+			import spark.components.NavigatorContent;
+			import spark.layouts.VerticalLayout;
+			
+			[Bindable]
+			/**
+			 * The app's data shop.
+			 */
+			private var dataShop:DataShop = DataShop.instance;
+			
+			[Bindable]
+			/**
+			 * The current page number we are viewing (zero based).
+			 */
+			public var currentPageNumber:int = 0;
+			
+			/**
+			 * Whether or not we have XML for an overlay.
+			 */
+			private var haveMusicXML:Boolean;
+			
+			/**
+			 * The XML that we load for the current score.
+			 */
+			private var musicXML:XML;
+			
+			/**
+			 * Loads the sheet music for a score.
+			 * Starts by loading the MusicXML
+			 */
+			public function loadSheetMusic():void {
+				if(dataShop.currentScore) {
+					// dim the score
+					this.alpha = 0.8;
+					
+					// prepare a loader for the MusicXML for the overlay
+					if(dataShop.currentScore.xmlLocation.length > 0) {
+						// we have MusicXML for an overlay, so proceed as such
+						haveMusicXML = true;
+						
+						// create a loader and proceed to the next step once the images have loaded
+						var xmlLoader:URLLoader = new URLLoader();
+						xmlLoader.addEventListener(IOErrorEvent.IO_ERROR, xmlLoadingFailed);
+						xmlLoader.addEventListener(Event.COMPLETE, finishXMLLoading);
+						xmlLoader.load(new URLRequest("http://173.203.94.109/musicxml/" + dataShop.currentScore.xmlLocation));
+					} else {
+						// we have no MusicXML to load, so mark as such
+						haveMusicXML = false;
+						
+						// proceed immediately to the next step
+						finishXMLLoading();
+					}
+				}
+			}
+			
+			/**
+			 * Handles a failed load of the XML file.
+			 */
+			private function xmlLoadingFailed(data:IOErrorEvent):void {
+				trace("Failed to open the desired file.\n\nReason:\n" + data.toString());
+			}
+			
+			/**
+			 * Handles the completion of the loading of the XML file.
+			 * Stores the XML and asks the renderer to prepare the score.
+			 */
+			private function finishXMLLoading(e:Event = null):void {
+				// get the xml from the event (what was loaded)
+				if(haveMusicXML) {
+					musicXML = new XML(e.target.data);
+				}
+				
+				// load the actual score images
+				// prepare the bulk loader to load all the images
+				var loader:BulkLoader;
+				try {
+					loader = new BulkLoader("score-loader");
+				} catch (e:Error) {
+					// kill the bulk loader if it existed
+					BulkLoader.getLoader("score-loader").clear();
+					loader = new BulkLoader("score-loader");
+				}
+				
+				// add a loader for each of the pages
+				for(var i:int = 0; i < dataShop.currentScore.fileCount(); i++) {
+					loader.add("http://173.203.94.109/sheetmusic/" + dataShop.currentScore.getFileLocation(i), {"id":"sheet" + i});
+				}
+				
+				// listen for completion of the loading
+				loader.addEventListener(BulkLoader.COMPLETE, handleScoresLoaded);
+				
+				// start loading!
+				loader.start();
+			}
+			
+			/**
+			 * Handles the completion of the BulkLoader loading all 
+			 * of the score images.
+			 * Creates DisplayObjects to hold the images and adds them to the screen.
+			 */
+			private function handleScoresLoaded(event:BulkProgressEvent):void {
+				// create a collection of pages
+				var pages:ArrayCollection = new ArrayCollection();
+				
+				// if we have MusicXML, we'll load pages as we parse through the XML, otherwise we'll create them later
+				if(haveMusicXML) {
+					// we have XML, so parses through the it for page layout information to be passed to the pages
+					var layout:PageLayout = parsePageLayout();
+					
+					// parse through the XML and pre-create sheet music pages with measures pre-populated
+					var currentPage:SheetMusicPage;
+					var currentSystem:PageSystem;
+					
+					// get the measures XMLList
+					var partsList:XMLList
+					if(musicXML.hasOwnProperty("part")) {
+						partsList = musicXML.part;
+					} else {
+						return;
+					}
+					
+					// get the measures from the first part
+					var measures:XMLList = partsList.measure;
+					var longRestMeasure:Measure;
+					for each(var xmlMeasure:XML in measures) {
+						// convert the xml measure into a measure object
+						var measure:Measure = convertMeasure(xmlMeasure);
+						
+						// temporary assignment of measure time
+						measure.time = (355 / measures.length()) * (measure.number - 1);
+						
+						// if it's measure 1, start a new page and a system
+						if(measure.number == 1) {
+							// new page
+							currentPage = new SheetMusicPage();
+							currentPage.pageLayout = layout;
+							pages.addItem(currentPage);
+							
+							// new system
+							currentSystem = new PageSystem();
+							currentPage.systems.push(currentSystem);
+						}
+						
+						// create a new page if we encounter one
+						if(measure.newPage) {
+							// now create a new page
+							currentPage = new SheetMusicPage();
+							currentPage.pageLayout = layout;
+							pages.addItem(currentPage);
+						}
+						
+						//create a new system if we encounter one (a new page also needs a new system)
+						if(measure.newSystem || measure.newPage) {
+							currentSystem = new PageSystem();
+							currentPage.systems.push(currentSystem);
+						}
+						
+						// see if we are in the middle of a long rest
+						if(measure.startsRest) {
+							// store the measure
+							longRestMeasure = measure;
+							longRestMeasure.longRestCount--;
+							
+							// add the measure anyway (it starts it)
+							currentSystem.measures.push(measure);
+						} else {
+							// add the measure to the current system if we aren't resting
+							if(longRestMeasure && longRestMeasure.longRestCount > 0) {
+								// decrement the count
+								longRestMeasure.longRestCount--;
+							} else {
+								// add it
+								currentSystem.measures.push(measure);
+								
+								// remove the long rest measure if it exists
+								longRestMeasure = null;
+							}
+						}
+					}
+				}
+				
+				// finishing creating sheet music pages by sending them their respective bitmap images
+				this.removeAllChildren();
+				for(var i:int = 0; i < dataShop.currentScore.fileCount(); i++) {
+					// get the data from the loader
+					var bitmapData:BitmapData = BulkLoader.getLoader("score-loader").getBitmapData("sheet" + i, true)
+					var imageBitmap:Bitmap = new Bitmap(bitmapData, "auto", true);
+					
+					// either reference the page as created when parsing XML, or create one now if we have no XML
+					var page:SheetMusicPage;
+					if(haveMusicXML) {
+						// get it from earlier
+						page = pages.toArray()[i];
+					} else {
+						// create a new page now
+						page = new SheetMusicPage();
+					}
+					
+					// prepare the sheet music page (pass it its bitmap image)
+					page.imageBitmap = imageBitmap;
+					this.addChild(page);
+				}
+				
+				// kill the bulk loader
+				BulkLoader.getLoader("score-loader").clear();
+				
+				// set up a timer to navigate through each page to preload it
+				var pageTimer:Timer = new Timer(1, dataShop.currentScore.fileCount());
+				pageTimer.addEventListener(TimerEvent.TIMER, flipPage);
+				pageTimer.addEventListener(TimerEvent.TIMER_COMPLETE, showScore);
+				
+				// go to the first page and start
+				currentPageNumber = 0;
+				pageTimer.start();
+			}
+			
+			/**
+			 * Processes the MusicXML file to generate a page layout object 
+			 * for use when overlaying a sheet of music.
+			 */
+			private function parsePageLayout():PageLayout {
+				// parses through the XML for page layout information to be passed to the pages
+				var layout:PageLayout = new PageLayout();
+				if(musicXML.hasOwnProperty("defaults")) {
+					var defaults:XMLList = musicXML.defaults;
+					
+					// get the page layout
+					if(defaults.hasOwnProperty("page-layout")) {
+						var pageLayout:XMLList = defaults['page-layout'];
+						
+						// dimensions
+						layout.pageWidth = pageLayout['page-width'];
+						layout.pageHeight = pageLayout['page-height'];
+						
+						// margins
+						if(pageLayout.hasOwnProperty("page-margins")) {
+							var margins:XMLList = pageLayout['page-margins'].(@type == "both");
+							
+							layout.pageMargins = new Margins();
+							layout.pageMargins.top = margins['top-margin'];
+							layout.pageMargins.bottom = margins['bottom-margin'];
+							layout.pageMargins.left = margins['left-margin'];
+							layout.pageMargins.right = margins['right-margin'];
+						}
+					} 
+					
+					// get the system layout
+					if(defaults.hasOwnProperty("system-layout")) {
+						var systemLayout:XMLList = defaults['system-layout'];
+						
+						layout.systemMargins = new Margins();
+						layout.systemMargins.left = systemLayout['system-margins']['left-margin'];
+						layout.systemMargins.right = systemLayout['system-margins']['right-margin'];
+						
+						layout.systemDistance = systemLayout['system-distance'];
+						layout.topSystemDistance = systemLayout['top-system-distance'];
+					}
+					
+					// get staff layout
+					if(defaults.hasOwnProperty("staff-layout")) {
+						layout.staffDistance = defaults['staff-layout']['staff-distance'];
+					}
+				}
+				
+				return layout;
+			}
+			
+			/**
+			 * Converts an XML representation of a measure into a 
+			 * Measure object for easier manipulation.
+			 */
+			private function convertMeasure(xmlMeasure:XML):Measure {
+				// make a new Measure object and populate its fields
+				var measure:Measure = new Measure();
+				measure.number = xmlMeasure.@number;
+				measure.measureWidth = xmlMeasure.@width;
+				
+				// get the print information
+				if(xmlMeasure.hasOwnProperty("print")) {
+					// see if we are to force a new system with this measure
+					if(xmlMeasure.print.@['new-system'] == "yes") {
+						measure.newSystem = true;
+					}
+					
+					// see if we are to force a new page with this measure
+					if(xmlMeasure.print.@['new-page'] == "yes") {
+						measure.newPage = true;
+					}
+					
+					// get the system layout properties
+					if(xmlMeasure.print.hasOwnProperty("system-layout")) {
+						measure.systemLayout = XML(xmlMeasure.print['system-layout']);
+					}
+				}
+				
+				// get measure information if this measure starts a long rest
+				if(xmlMeasure.hasOwnProperty("attributes")) {
+					if(xmlMeasure['attributes'].hasOwnProperty("measure-style")) {
+						if(xmlMeasure['attributes']['measure-style'].hasOwnProperty("multiple-rest")) {
+							// it is the start of a long rest
+							measure.startsRest = true;
+							measure.longRestCount = parseInt(xmlMeasure['attributes']['measure-style']['multiple-rest']);
+						}
+					}
+				}	
+				
+				return measure;
+			}
+			
+			/**
+			 * Flips the page by one to preload it.
+			 */
+			private function flipPage(event:TimerEvent):void {
+				pageUp();
+			}
+			
+			/**
+			 * After the page flipping timer is complete, 
+			 * resets to the first page and shows the score.
+			 */
+			private function showScore(event:TimerEvent):void {
+				// go to the first page
+				currentPageNumber = 0;
+				
+				// undim the score
+				this.alpha = 1.0;
+				
+				// preplay a bit and enable to play/pause button
+				this.dispatchEvent(new ScoreEvent(ScoreEvent.LOADING_COMPLETE));
+			}
+			
+			/**
+			 * Increases the page count.
+			 */
+			public function pageUp():void {
+				// increase if we can
+				if(currentPageNumber < dataShop.currentScore.fileCount() - 1) {
+					currentPageNumber++;
+				}
+			}
+			
+			/**
+			 * Decreases the page count.
+			 */
+			public function pageDown():void {
+				// descrease if we can
+				if(currentPageNumber > 0) {
+					currentPageNumber--;
+				}
+			}
+		]]>
+	</fx:Script>
+</mx:ViewStack>

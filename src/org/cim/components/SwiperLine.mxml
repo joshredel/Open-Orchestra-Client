@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:UIComponent xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				xmlns:s="library://ns.adobe.com/flex/spark" 
+				xmlns:mx="library://ns.adobe.com/flex/mx" 
+				mouseEnabled="false">
+	
+	<fx:Script>
+		<![CDATA[
+			
+			/**
+			 * Draws the line from the top-left corner to the bottom-right corner.
+			 */
+			public function draw():void {
+				// validating makes sure the width and height properties are correct
+				this.validateNow();
+				graphics.clear();
+				
+				// calculate the length of the line such that it ends up 
+				// on the radius of the circle (or at least points to the mouse)
+				var ratio:Number = this.width / (Math.sqrt(Math.pow(this.width, 2) + Math.pow(this.height, 2)))
+				var desiredTheta:Number = Math.PI - Math.acos(ratio);
+				var minusWidth:Number = 7 * Math.cos(desiredTheta);
+				var minusHeight:Number = 7 * Math.sin(desiredTheta);
+				
+				// draw the line
+				graphics.lineStyle(10, 0xDDDDDD, 1);
+				graphics.moveTo(0, 0);
+				// subtract or add based on the quadrant
+				if(this.height >= 0) {
+					// quadrants 1 & 2
+					graphics.lineTo(this.width + minusWidth, this.height - minusHeight);
+				} else {
+					// quadrants 3 & 4
+					graphics.lineTo(this.width + minusWidth, this.height + minusHeight);
+				}
+				
+				// draw a circle at the tip
+				graphics.lineStyle(10, 0xDDDDDD, 1);
+				graphics.beginFill(0xDDDDDD, 1);
+				graphics.drawCircle(this.width, this.height, 7);
+			}
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+</mx:UIComponent>

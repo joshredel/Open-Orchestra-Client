@@ -1,0 +1,313 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx"
+		 xmlns:components="org.cim.components.*"
+		 width="1270" height="434" creationComplete="hideKeyboard()" includeInLayout="false">
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.events.FlexEvent;
+			import mx.managers.FocusManager;
+			
+			import spark.components.TextInput;
+			
+			/**
+			 * The target of the keyboard's output.
+			 */
+			private var _target:TextInput;
+			
+			/**
+			 * Sets the target of the keyboard's output.
+			 * Adds listeners for focus events.
+			 */
+			public function set target(target:TextInput):void {
+				// store the reference
+				_target = target;
+				
+				// add focus in and focus out event listeners
+				_target.addEventListener(FocusEvent.FOCUS_IN, showKeyboard);
+				_target.addEventListener(FocusEvent.FOCUS_OUT, hideKeyboard);
+				_target.addEventListener(MouseEvent.CLICK, showKeyboard);
+				_target.addEventListener(FlexEvent.SELECTION_CHANGE, showKeyboard);
+			}
+			
+			/**
+			 * Retrieves the target of the keyboard's output.
+			 * Simply returns the target.
+			 */
+			public function get target():TextInput {
+				return _target;
+			}
+			
+			/**
+			 * Whether or not we have a shift press waiting to be used.
+			 * This is set true when the shift key is pressed, and "used" 
+			 * the next time a letter is pressed to make it a capitalized letter.
+			 */
+			private var shiftWaiting:Boolean = false;
+			
+			/**
+			 * Whether or not the keyboard is current opened.
+			 */
+			private var opened:Boolean = true;
+			
+			/**
+			 * Handles a focus in on the target.
+			 * Shows the keyboard.
+			 */
+			public function showKeyboard(event:Event = null):void {
+				if(!opened) {
+					// slide open
+					opened = true;
+					open.play();
+				}
+			}
+			
+			/**
+			 * Handles a focus out on the target.
+			 * Hides the keyboard.
+			 */
+			public function hideKeyboard(event:Event = null):void {
+				if(opened) {
+					// slide closed and disable
+					opened = false
+					close.play();
+					
+					// hide focus on the target
+					target.drawFocus(false);
+				}
+			}
+			
+			/**
+			 * Handles a press event from lettered/numbered keys on the keyboard.
+			 * Enters the value into the target's text.
+			 */
+			private function type(event:Event):void {
+				// get the key that was pressed
+				var pressed:KeyboardSquare = event.target as KeyboardSquare;
+				var value:String = pressed.value;
+				
+				// get the text of the target for manipulation
+				var text:String = target.text;
+				
+				// add its value to the text field
+				// but first see if it's a lowercase letter...
+				if(value.charCodeAt(0) >= 97 && value.charCodeAt(0) <= 122) {
+					// it is... now shift it if we are shifting and then toggle back
+					if(shiftWaiting) {
+						value = String.fromCharCode(value.charCodeAt(0) - 32);
+						shift();
+					}
+				}
+				
+				// determine if there is a selection or not
+				if(target.selectionActivePosition == target.selectionAnchorPosition) {
+					// nothing is selected, so just input at the caret's position
+					var position:int = target.selectionActivePosition;
+					
+					// break the string, add the typed value in the middle, and replace
+					target.text = text.substring(0, position) + value + text.substring(position);
+					
+					// move the caret to the end of the new letter
+					target.selectRange(position + 1, position + 1);
+				} else {
+					// something is highlighted, so delete it, then proceed
+					// get the bounds of the un-highlighted text
+					var lower:int = Math.min(target.selectionAnchorPosition, target.selectionActivePosition);
+					var higher:int = Math.max(target.selectionAnchorPosition, target.selectionActivePosition);
+					
+					// "delete" the selected text by ignoring it, and add the new text in between
+					target.text = text.substring(0, lower) + value + text.substring(higher);
+					
+					// move the caret to the end of the new letter
+					target.selectRange(lower + 1, lower + 1);
+				}
+			}
+			
+			/**
+			 * Handles a press event from the backspace key.
+			 * Performs a "backspace" on the target's text.
+			 */
+			private function backspace(event:Event = null):void {
+				// get the text of the target for manipulation
+				var text:String = target.text;
+				
+				// determine if there is a selection or not
+				if(target.selectionActivePosition == target.selectionAnchorPosition) {
+					// nothing is selected, so remove one character backwards
+					var position:int = target.selectionActivePosition;
+					
+					// break the string and ignore one key
+					target.text = text.substring(0, position - 1) + text.substring(position);
+					
+					// move the caret to the end of the new letter
+					target.selectRange(position, position);
+				} else {
+					// something is highlighted, so delete it, then proceed
+					// get the bounds of the un-highlighted text
+					var lower:int = Math.min(target.selectionAnchorPosition, target.selectionActivePosition);
+					var higher:int = Math.max(target.selectionAnchorPosition, target.selectionActivePosition);
+					
+					// "delete" the selected text by ignoring it, and add the new text in between
+					target.text = text.substring(0, lower) + text.substring(higher);
+					
+					// move the caret to the end of the new letter
+					target.selectRange(lower + 1, lower + 1);
+				}
+			}
+			
+			/**
+			 * Handles a press event from a shift key.
+			 * Adds the shift toggle to the next letter entered.
+			 */
+			private function shift(event:Event = null):void {
+				// toggle the shift
+				shiftWaiting = !shiftWaiting;
+			}
+			
+			/**
+			 * Handles a press on the number/ABC keys.
+			 * Toggles states between the two keyboards.
+			 */
+			private function toggleKeyboards(event:Event = null):void {
+				// change the state
+				currentState = event.target.value;
+				
+				// change the image (done with visibility instead of states to
+				// handle preloading the other keyboard image)
+//				if(currentState == "abc") {
+//					numberImage.visible = false
+//					abcImage.visible = true;
+//				} else {
+//					abcImage.visible = false;
+//					numberImage.visible = true;
+//				}
+			}
+			
+			/**
+			 * Handles a press on the clear all key.
+			 * Clears all text in the target.
+			 */
+			private function clearAll(event:Event = null):void {
+				target.text = "";
+			}
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<s:State name="abc" />
+		<s:State name="number" />
+		
+		<!-- Sliding Effects -->
+		<s:Resize id="close" target="{this}" heightFrom="{this.height}" heightTo="0" 
+				  widthFrom="{this.width}" widthBy="0" effectEnd="this.visible = false" />
+		
+		<s:Resize id="open" target="{this}" heightFrom="{this.height}" heightBy="434" 
+				  widthFrom="{this.width}" widthBy="0" effectStart="this.visible = true" />
+	</fx:Declarations>
+	
+	<!-- Background Gradient -->
+	<s:Rect width="100%" height="100%" topLeftRadiusX="12" topLeftRadiusY="12" 
+			topRightRadiusX="12" topRightRadiusY="12">
+		<s:fill>
+			<s:LinearGradient rotation="90">
+				<s:entries>
+					<s:GradientEntry color="0xF3F3F3" ratio="0.0" />
+					<s:GradientEntry color="0xBBBBBB" ratio="1.0" />
+				</s:entries>
+			</s:LinearGradient>
+		</s:fill>
+		<s:stroke>
+			<s:SolidColorStroke color="0x999999" pixelHinting="true" />
+		</s:stroke>
+	</s:Rect>
+	
+	<!-- ABC Layout -->
+	<!--<mx:Image id="abcImage" source="/assets/images/keyboard.png" width="100%" height="434"  x="0" y="0" smoothBitmapContent="true" />-->
+	
+	<components:KeyboardSquare x="8" y="10" id="qKey" width="7.52%" height="21.97%" value="q" press="type(event)" includeIn="abc" />
+	<components:KeyboardSquare x="123" y="10" id="wKey" width="7.52%" height="21.97%" value="w" press="type(event)" includeIn="abc" />
+	<components:KeyboardSquare x="239" y="10" id="eKey" width="7.52%" height="21.97%" value="e" press="type(event)" includeIn="abc" />
+	<components:KeyboardSquare x="354" y="10" id="rKey" width="7.52%" height="21.97%" value="r" press="type(event)" includeIn="abc" />
+	<components:KeyboardSquare x="469" y="10" id="tKey" width="7.52%" height="21.97%" value="t" press="type(event)" includeIn="abc" />
+	<components:KeyboardSquare x="583" y="10" id="yKey" width="7.52%" height="21.97%" value="y" press="type(event)" includeIn="abc" />
+	<components:KeyboardSquare x="699" y="10" id="uKey" width="7.52%" height="21.97%" value="u" press="type(event)" includeIn="abc" />
+	<components:KeyboardSquare x="813" y="10" id="iKey" width="7.52%" height="21.97%" value="i" press="type(event)" includeIn="abc" />
+	<components:KeyboardSquare x="929" y="10" id="oKey" width="7.52%" height="21.97%" value="o" press="type(event)" includeIn="abc" />
+	<components:KeyboardSquare x="1043" y="10" id="pKey" width="7.52%" height="21.97%" value="p" press="type(event)" includeIn="abc" />
+	<components:KeyboardSquare x="1159" y="10" id="backspaceKey" width="7.89%" height="21.97%" alternateValue="←" press="backspace(event)" includeIn="abc" />
+	
+	<components:KeyboardSquare x="56" y="117" id="aKey" width="7.52%" height="21.97%" value="a" press="type(event)" includeIn="abc" />
+	<components:KeyboardSquare x="170" y="117" id="sKey" width="7.52%" height="21.97%" value="s" press="type(event)" includeIn="abc" />
+	<components:KeyboardSquare x="284" y="117" id="dKey" width="7.52%" height="21.97%" value="d" press="type(event)" includeIn="abc" />
+	<components:KeyboardSquare x="398" y="117" id="fKey" width="7.52%" height="21.97%" value="f" press="type(event)" includeIn="abc" />
+	<components:KeyboardSquare x="512" y="117" id="gKey" width="7.52%" height="21.97%" value="g" press="type(event)" includeIn="abc" />
+	<components:KeyboardSquare x="626" y="117" id="hKey" width="7.52%" height="21.97%" value="h" press="type(event)" includeIn="abc" />
+	<components:KeyboardSquare x="741" y="117" id="jKey" width="7.52%" height="21.97%" value="j" press="type(event)" includeIn="abc" />
+	<components:KeyboardSquare x="855" y="117" id="kKey" width="7.52%" height="21.97%" value="k" press="type(event)" includeIn="abc" />
+	<components:KeyboardSquare x="970" y="117" id="lKey" width="7.52%" height="21.97%" value="l" press="type(event)" includeIn="abc" />
+	<components:KeyboardSquare x="1085" y="117" id="returnKey" width="13.72%" height="21.97%" alternateValue="return" press="hideKeyboard(event)" includeIn="abc" />
+	
+	<components:KeyboardSquare x="8" y="223" id="leftShiftKey" width="7.52%" height="21.97%" alternateValue="shift" press="shift(event)" includeIn="abc" />
+	<components:KeyboardSquare x="120" y="223" id="zKey" width="7.52%" height="21.97%" value="z" press="type(event)" includeIn="abc" />
+	<components:KeyboardSquare x="232" y="223" id="xKey" width="7.52%" height="21.97%" value="x" press="type(event)" includeIn="abc" />
+	<components:KeyboardSquare x="345" y="223" id="cKey" width="7.52%" height="21.97%" value="c" press="type(event)" includeIn="abc" />
+	<components:KeyboardSquare x="457" y="223" id="vKey" width="7.52%" height="21.97%" value="v" press="type(event)" includeIn="abc" />
+	<components:KeyboardSquare x="570" y="223" id="bKey" width="7.52%" height="21.97%" value="b" press="type(event)" includeIn="abc" />
+	<components:KeyboardSquare x="682" y="223" id="nKey" width="7.52%" height="21.97%" value="n" press="type(event)" includeIn="abc" />
+	<components:KeyboardSquare x="794" y="223" id="mKey" width="7.52%" height="21.97%" value="m" press="type(event)" includeIn="abc" />
+	<components:KeyboardSquare x="908" y="223" id="atKey" width="7.52%" height="21.97%" value="@" press="type(event)" includeIn="abc" />
+	<components:KeyboardSquare x="1020" y="223" id="periodKey" width="7.52%" height="21.97%" value="." press="type(event)" includeIn="abc" />
+	<components:KeyboardSquare x="1134" y="223" id="rightShiftKey" width="9.96%" height="21.97%" alternateValue="shift" press="shift(event)" includeIn="abc" />
+	
+	<components:KeyboardSquare x="8" y="329" id="leftNumberKey" width="25.19%" height="21.97%" alternateValue=".?123" value="number" press="toggleKeyboards(event)" includeIn="abc" />
+	<components:KeyboardSquare x="345" y="329" id="spaceKey" width="34.02%" height="21.97%" value=" " press="type(event)" includeIn="abc" />
+	<components:KeyboardSquare x="795" y="329" id="underscoreKey" width="7.52%" height="21.97%" value="_" press="type(event)" includeIn="abc" />
+	<components:KeyboardSquare x="907" y="329" id="dashKey" width="7.52%" height="21.97%" value="-" press="type(event)" includeIn="abc" />
+	<components:KeyboardSquare x="1020" y="329" id="rightNumberKey" width="10.1%" height="21.97%" alternateValue=".?123" value="number" press="toggleKeyboards(event)" includeIn="abc" />
+	<components:KeyboardSquare x="1165" y="329" id="shrinkKey" width="7.52%" height="21.97%" alternateValue="hide" press="hideKeyboard(event)" includeIn="abc" />
+	
+	
+	<!-- Number Layout -->
+	<!--<mx:Image id="numberImage" source="/assets/images/keyboardNum.png" width="100%" height="434"  x="0" y="0" smoothBitmapContent="true" visible="false" />-->
+	
+	<components:KeyboardSquare x="8" y="10" id="oneKey" width="7.52%" height="21.97%" value="1" press="type(event)" includeIn="number" />
+	<components:KeyboardSquare x="123" y="10" id="twoKey" width="7.52%" height="21.97%" value="2" press="type(event)" includeIn="number" />
+	<components:KeyboardSquare x="239" y="10" id="threeKey" width="7.52%" height="21.97%" value="3" press="type(event)" includeIn="number" />
+	<components:KeyboardSquare x="354" y="10" id="fourKey" width="7.52%" height="21.97%" value="4" press="type(event)" includeIn="number" />
+	<components:KeyboardSquare x="469" y="10" id="fiveKey" width="7.52%" height="21.97%" value="5" press="type(event)" includeIn="number" />
+	<components:KeyboardSquare x="583" y="10" id="sixKey" width="7.52%" height="21.97%" value="6" press="type(event)" includeIn="number" />
+	<components:KeyboardSquare x="699" y="10" id="sevenKey" width="7.52%" height="21.97%" value="7" press="type(event)" includeIn="number" />
+	<components:KeyboardSquare x="813" y="10" id="eightKey" width="7.52%" height="21.97%" value="8" press="type(event)" includeIn="number" />
+	<components:KeyboardSquare x="929" y="10" id="nineKey" width="7.52%" height="21.97%" value="9" press="type(event)" includeIn="number" />
+	<components:KeyboardSquare x="1043" y="10" id="zeroKey" width="7.52%" height="21.97%" value="0" press="type(event)" includeIn="number" />
+	<components:KeyboardSquare x="1159" y="10" id="backspaceKey2" width="7.89%" height="21.97%" alternateValue="←" press="backspace(event)" includeIn="number" />
+	
+	<components:KeyboardSquare x="56" y="117" id="singleQuoteKey" width="7.52%" height="21.97%" value="`" press="type(event)" includeIn="number" />
+	<components:KeyboardSquare x="170" y="117" id="pipeKey" width="7.52%" height="21.97%" value="|" press="type(event)" includeIn="number" />
+	<components:KeyboardSquare x="284" y="117" id="leftBraceKey" width="7.52%" height="21.97%" value="{" press="type(event)" includeIn="number" />
+	<components:KeyboardSquare x="398" y="117" id="rightBraceKey" width="7.52%" height="21.97%" value="}" press="type(event)" includeIn="number" />
+	<components:KeyboardSquare x="512" y="117" id="percentKey" width="7.52%" height="21.97%" value="%" press="type(event)" includeIn="number" />
+	<components:KeyboardSquare x="626" y="117" id="caretKey" width="7.52%" height="21.97%" value="^" press="type(event)" includeIn="number" />
+	<components:KeyboardSquare x="741" y="117" id="astericksKey" width="7.52%" height="21.97%" value="*" press="type(event)" includeIn="number" />
+	<components:KeyboardSquare x="855" y="117" id="forwardSlashKey" width="7.52%" height="21.97%" value="/" press="type(event)" includeIn="number" />
+	<components:KeyboardSquare x="970" y="117" id="apostropheKey" width="7.52%" height="21.97%" value="'" press="type(event)" includeIn="number" />
+	<components:KeyboardSquare x="1085" y="117" id="returnKey2" width="13.72%" height="21.97%" alternateValue="return" press="hideKeyboard(event)" includeIn="number" />
+	
+	<components:KeyboardSquare x="8" y="223" id="clearAllKey" width="25.19%" height="21.97%" alternateValue="undo" press="clearAll(event)" includeIn="number" />
+	<components:KeyboardSquare x="345" y="223" id="dollarKey" width="7.52%" height="21.97%" value="$" press="type(event)" includeIn="number" />
+	<components:KeyboardSquare x="457" y="223" id="ampersandKey" width="7.52%" height="21.97%" value="&amp;" press="type(event)" includeIn="number" />
+	<components:KeyboardSquare x="570" y="223" id="tildeKey" width="7.52%" height="21.97%" value="~" press="type(event)" includeIn="number" />
+	<components:KeyboardSquare x="682" y="223" id="octothorpeKey" width="7.52%" height="21.97%" value="#" press="type(event)" includeIn="number" />
+	<components:KeyboardSquare x="794" y="223" id="equalKey" width="7.52%" height="21.97%" value="=" press="type(event)" includeIn="number" />
+	<components:KeyboardSquare x="908" y="223" id="plusKey" width="7.52%" height="21.97%" value="+" press="type(event)" includeIn="number" />
+	<components:KeyboardSquare x="1020" y="223" id="periodKey2" width="18.79%" height="21.97%" value="." press="type(event)" includeIn="number" />
+	
+	<components:KeyboardSquare x="8" y="329" id="leftAbcKey" width="18.79%" height="21.97%" value="abc" press="toggleKeyboards(event)" includeIn="number" />
+	<components:KeyboardSquare x="266" y="329" id="spaceKey2" width="40.06%" height="21.97%" value=" " press="type(event)" includeIn="number" />
+	<components:KeyboardSquare x="795" y="329" id="exclamationKey" width="7.52%" height="21.97%" value="!" press="type(event)" includeIn="number" />
+	<components:KeyboardSquare x="907" y="329" id="questionKey" width="7.52%" height="21.97%" value="?" press="type(event)" includeIn="number" />
+	<components:KeyboardSquare x="1020" y="329" id="rightAbcKey" width="10.1%" height="21.97%" value="abc" press="toggleKeyboards(event)" includeIn="number" />
+	<components:KeyboardSquare x="1165" y="329" id="shrinkKey2" width="7.52%" height="21.97%" alternateValue="hide" press="hideKeyboard(event)" includeIn="number" />
+</s:Group>

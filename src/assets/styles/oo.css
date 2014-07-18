@@ -1,0 +1,102 @@
+/* CSS file */
+@namespace s "library://ns.adobe.com/flex/spark";
+@namespace mx "library://ns.adobe.com/flex/mx";
+
+@font-face {
+	src: url("assets/fonts/HelveticaNeue.dfont");
+	fontFamily: helveticaNeue;
+}
+
+@font-face {
+	src: url("assets/fonts/HelveticaNeue.dfont");
+	fontFamily: helveticaNeue;
+	fontWeight: bold;
+}
+
+@font-face {
+	src: url("assets/fonts/HelveticaNeue.dfont");
+	fontFamily: helveticaNeue;
+	fontStyle: italic;
+}
+
+/*
+@font-face {
+	src: url("assets/fonts/HelveticaNeue.dfont");
+	fontFamily: helveticaNeueMX;
+	embedAsCFF: false;
+}*/
+
+@font-face {
+	src: url("assets/fonts/HelveticaNeue.dfont");
+	fontFamily: helveticaNeueMX;
+	fontWeight: bold;
+	embedAsCFF: false;
+}
+
+s|WindowedApplication {
+	fontFamily: helveticaNeue;
+	fontSize: 16px;
+}
+
+.header {
+	fontWeight: bold;
+	fontSize: 20px;
+}
+
+.headerTitleLabel {
+	fontWeight: bold;
+	fontSize: 20px;
+	paddingBottom: -8px;
+}
+
+s|List {
+	borderVisible: false;
+}
+
+s|List#instrumentList s|Scroller {
+	horizontalScrollPolicy: off;
+	verticalScrollPolicy: off;
+}
+
+s|Button {
+	fontWeight: bold;
+}
+
+s|SkinnableTextBase:normalWithPrompt {
+	color: #666666;
+	fontStyle: italic;
+}
+
+.grayTitle {
+	fontSize: 13px;
+	paddingBottom: -6px;
+	color: #999999;
+}
+
+mx|Alert {
+	titleStyleName: "alertTitle";
+	messageStyleName: "alertMessage";
+	buttonStyleName: "alertButton";
+	fontFamily: helveticaNeueMX;
+	fontSize: 20;
+	fontWeight: bold;
+	borderSkin: ClassReference("org.cim.skins.AlertSkin");
+}
+
+.alertTitle {
+	height: 0;
+}
+
+.alertMessage {
+	color: black;
+	padding: 0;
+}
+
+.alertButton {
+	letterSpacing: 0;
+	fontSize: 14;
+	cornerRadius: 10;
+	fontWeight: bold;
+	textRollOverColor: black;
+	color: black;
+}

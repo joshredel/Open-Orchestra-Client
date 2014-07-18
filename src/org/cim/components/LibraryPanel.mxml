@@ -1,0 +1,345 @@
+<?xml version="1.0" encoding="utf-8"?>
+<components:HomePanel xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					  xmlns:s="library://ns.adobe.com/flex/spark" 
+					  xmlns:mx="library://ns.adobe.com/flex/mx" 
+					  xmlns:components="org.cim.components.*" 
+					  width="400" height="300" title="Library for" 
+					  titleVisible="false" creationComplete="finish()">
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.binding.utils.ChangeWatcher;
+			import mx.collections.ArrayCollection;
+			import mx.rpc.events.ResultEvent;
+			
+			import org.cim.DataShop;
+			import org.cim.vo.Genre;
+			import org.cim.vo.Instrument;
+			import org.cim.vo.MusicPiece;
+			import org.cim.vo.PracticeRecording;
+			import org.cim.vo.PracticeSession;
+			import org.cim.vo.Score;
+			
+			[Bindable]
+			/**
+			 * The app's data shop.
+			 */
+			private var dataShop:DataShop = DataShop.instance;
+			
+			/**
+			 * The function to be called when we want to switch to the play view.
+			 */
+			public var playFunction:Function;
+			
+			[Bindable]
+			/**
+			 * A collection of music pieces available for display.
+			 */
+			private var musicPieces:ArrayCollection = new ArrayCollection();
+			
+			[Bindable]
+			/**
+			 * A collection of parent instruments for display.
+			 */
+			private var parentInstruments:ArrayCollection = new ArrayCollection();
+			
+			[Bindable]
+			/**
+			 * A collection of genres for display.
+			 */
+			private var genres:ArrayCollection = new ArrayCollection();
+			
+			/**
+			 * Handles the completion of the panel being created.
+			 * Listens for a play button to be clicked.  Watches for changes to the 
+			 * music piece collection so we can update it and apply a filter function
+			 * Watches for changes to the current parent instrument so that we can update 
+			 * the data in the list to apply the filter.
+			 */
+			private function finish():void {
+				// listen for the playClicked event
+				musicPieceList.addEventListener("playClicked", goToPlayView);
+				
+				// listen for changes to the music piece data, parent instruments, and genres
+				dataShop.musicPieceService.getMusicPieces.addEventListener(ResultEvent.RESULT, updateMusicPieceCollection);
+				dataShop.instrumentService.getParentInstruments.addEventListener(ResultEvent.RESULT, updateInstrumentCollection);
+				dataShop.genreService.getGenres.addEventListener(ResultEvent.RESULT, updateGenreCollection);
+				
+				// watch for changes to the current parent insturment or genre
+				ChangeWatcher.watch(dataShop, "currentParentInstrument", updateFilter);
+				ChangeWatcher.watch(dataShop, "currentGenre", updateFilter);
+			}
+			
+			/**
+			 * Handles a result from a getMusicPieces call.
+			 * Updates the collection stored here and applies a filter function.
+			 */
+			private function updateMusicPieceCollection(event:ResultEvent):void {
+				// update our local collection
+				musicPieces = new ArrayCollection(event.result as Array);
+				
+				if(musicPieces) {
+					// assign a filter function
+					musicPieces.filterFunction = musicPieceFilter;
+					
+					// refresh the data so that the filter function takes effect
+					musicPieces.refresh();
+				}
+			}
+			
+			/**
+			 * Handles a change to the parent instruments.
+			 * Inserts a fake "all instruments" instrument to
+			 * act as a special filter item.
+			 */
+			private function updateInstrumentCollection(event:ResultEvent):void {
+				// create a false instrument to act as the "All Instruments" item
+				var allInstruments:Instrument = new Instrument();
+				allInstruments.id = 0;
+				allInstruments.instrumentName = Instrument.ALL_INSTRUMENTS;
+				
+				// get the result data
+				// we have to clone the array; otherwise it double binds the 
+				// changes we make here back to the master collection in data shop
+				parentInstruments = new ArrayCollection();
+				for each(var item:* in event.result) {
+					parentInstruments.addItem(item);
+				}
+				
+				// insert the fake instrument at the start
+				//parentInstruments.addItemAt(allInstruments, 0);
+			}
+			
+			/**
+			 * Handles a change to the genres.
+			 * Inserts a fake "all genres" genre to
+			 * act as a special filter item.
+			 */
+			private function updateGenreCollection(event:ResultEvent):void {
+				// create a false genre to act as the "All Genres" item
+				var allGenres:Genre = new Genre();
+				allGenres.id = 0;
+				allGenres.genreName = Genre.ALL_GENRES;
+				
+				// get the result data
+				// we have to clone the array; otherwise it double binds the 
+				// changes we make here back to the master collection in data shop
+				genres = new ArrayCollection();
+				for each(var item:* in event.result) {
+					genres.addItem(item);
+				}
+				
+				// insert the fake instrument at the start
+				genres.addItemAt(allGenres, 0);
+			}
+			
+			/**
+			 * The filter for the music piece list.
+			 * Returns true if the passed music piece has a score with an 
+			 * instrument that is the same as current parent instrument and a genre 
+			 * that is the same as the current genre.
+			 * Returns false otherwise.
+			 */
+			private function musicPieceFilter(data:MusicPiece):Boolean {
+				// start out by assuming it won't pass
+				var willPass:Boolean = false;
+				var foundInLoop:Boolean;
+				
+				// now check that it actually will pass: parent instrument filter
+				if(dataShop.currentParentInstrument) {
+					// see if we have the all instrument as the current parent instrument
+					if(dataShop.currentParentInstrument.instrumentName == Instrument.ALL_INSTRUMENTS) {
+						// everything is returned for the filter
+						willPass = true;
+					} else {
+						// only certain instruments should be returned
+						// loop through each score on the music piece
+						foundInLoop = false;
+						for each(var score:Score in data.scores) {
+							if(score.instrument.id == dataShop.currentParentInstrument.id ||
+							   (score.instrument.parentInstrument && 
+								score.instrument.parentInstrument.id == dataShop.currentParentInstrument.id)) {
+								willPass = true;
+								foundInLoop = true;
+								break;
+							}
+						}
+						
+						// if it wasn't found in the loop, it won't pass
+						if(!foundInLoop) {
+							willPass = false;
+						}
+					}
+				} else {
+					// there was no current parent instrument so we'll just say it passed
+					willPass = true;
+				}
+				
+				// now check that it will actually pass: genre filter
+				if(willPass) {
+					if(dataShop.currentGenre) {
+						// see if we have the all genres as the current genre
+						if(dataShop.currentGenre.genreName == Genre.ALL_GENRES) {
+							// everything is return for the filter
+							willPass = true;
+						} else {
+							// only certain genres should be returned
+							// loop through each genre to see if they match
+							foundInLoop = false;
+							for each(var genre:Genre in data.genres) {
+								if(genre.id == dataShop.currentGenre.id) {
+									willPass = true;
+									foundInLoop = true;
+									break;
+								}
+							}
+							
+							// if it wasn't found in the loop, it won't pass
+							if(!foundInLoop) {
+								willPass = false;
+							}
+						}
+					} else {
+						// there was no current genre so we'll just say it passed 
+						willPass = true;
+					}
+				}
+				
+				// return whether or not it passed
+				return willPass;
+			}
+			
+			/**
+			 * Handles a change to the current parent instrument.
+			 * Asks the music piece data to refresh so the filter is applied.
+			 */
+			private function updateFilter(event:Event):void {
+				musicPieces.refresh();
+			}
+			
+			/**
+			 * Removes whitespace and capitalization from the instrument name
+			 * for use in the image.
+			 */
+			private function stripInstrumentName(instrument:Instrument):String {
+				if(instrument) {
+					var stripped:String = "";
+					var parts:Array = instrument.instrumentName.split(" ");
+					for each(var part:String in parts) {
+						stripped += part.toLowerCase();
+					}
+					
+					return stripped;
+				} else {
+					return "";
+				}
+			}
+			
+			/**
+			 * Attempts to switch to the play view.
+			 * Stores the music piece selected in a new practice session 
+			 * in the data shop.
+			 */
+			private function goToPlayView(event:Event):void {
+				// get the selected music piece
+				var musicPiece:MusicPiece = musicPieceList.selectedItem as MusicPiece;
+				
+				// create a new practice session
+				var session:PracticeSession = new PracticeSession();
+				session.user = dataShop.loggedInUser;
+				session.musicPiece = musicPiece;
+				session.lifecycle = 1;
+				
+				// determine the sessions instrument
+				if(dataShop.currentParentInstrument.childInstruments.length == 0) {
+					// it has no children, so this is the only instrument... 
+					// assign it as the instrument for the session
+					session.instrument = dataShop.currentParentInstrument;
+				} else {
+					// there are children instruments, so assign the first of them 
+					// as the instrument for the session
+//					session.instrument = dataShop.currentParentInstrument.childInstruments.getItemAt(0) as Instrument;
+					session.instrument = musicPiece.scores.getItemAt(0).instrument as Instrument;
+				}
+				
+				// store it in the data shop and save it to the database
+				//dataShop.currentPracticeSession = session;
+				dataShop.practiceSessionService.savePracticeSession(session);
+				dataShop.practiceSessionService.savePracticeSession.addEventListener(ResultEvent.RESULT, function(event:ResultEvent):void {
+					dataShop.currentPracticeSession = event.result as PracticeSession;
+					
+					if(dataShop.currentPracticeSession) {
+						try {
+							// call the play function
+							playFunction();
+						} catch(e:Error) {
+							trace("no play function defined");
+						}
+					}
+				});
+			}
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<!-- Overriden Title Bar -->
+	<s:BorderContainer id="titleBar" width="100%" height="54" borderColor="0x999999" 
+					   borderStyle="solid" borderWeight="1" cornerRadius="4">
+		<s:layout>
+			<s:HorizontalLayout verticalAlign="middle" horizontalAlign="center" paddingTop="6" 
+								paddingLeft="6" paddingRight="26" paddingBottom="6" />
+		</s:layout>
+		
+		<!-- Dynamic spacing to center the title with the button bar -->
+		<mx:Spacer width="{buttonGroup.width}" />
+		<mx:Spacer width="100%" />
+		
+		<!-- Title and instrument -->
+		<s:Label text="{title + (dataShop.currentParentInstrument.instrumentName == Instrument.ALL_INSTRUMENTS ? ' ' + Instrument.ALL_INSTRUMENTS : '')}" 
+				 styleName="header" />
+		<mx:Image source="/assets/images/instruments/{stripInstrumentName(dataShop.currentParentInstrument)}.png" 
+				  height="30" smoothBitmapContent="true" visible="{dataShop.currentParentInstrument.instrumentName != 'All Instruments'}" />
+		
+		<mx:Spacer width="100%" />
+		
+		<!-- Buttons -->
+		<s:HGroup id="buttonGroup" gap="12">
+			<s:Button id="otherInstrumentsButton" label="Change Instrument..." height="36" click="otherInstrumentsPopup.toggle()" />
+			<s:Button id="genreButton" label="{(dataShop.currentGenre.genreName == Genre.ALL_GENRES ? 'All Genres' : dataShop.currentGenre.genreName)}" 
+					  height="36" click="genrePopup.toggle()" />
+		</s:HGroup>
+	</s:BorderContainer>
+	
+	<!-- Music Piece List -->
+	<s:Group width="100%" height="100%">
+		<s:layout>
+			<s:HorizontalLayout paddingTop="0" paddingLeft="1" 
+								paddingBottom="0" paddingRight="1" />
+		</s:layout>
+		
+		<s:List id="musicPieceList" width="100%" height="100%" borderVisible="false"  top="1" left="1" 
+				dataProvider="{musicPieces}" 
+				itemRenderer="org.cim.components.MusicPieceItemRenderer" selectionColor="0xFFFFFF" />
+	</s:Group>
+	
+	<!-- Popups -->
+	<components:PopupMenu id="otherInstrumentsPopup" width="200" height="{55 + (30 * parentInstruments.length)}" 
+						  includeInLayout="false" caller="{otherInstrumentsButton}">
+						  <!--x="{this.width - 330}" y="44"-->
+		<s:List id="instrumentFilterList" width="100%" height="100%" borderVisible="false" 
+				dataProvider="{parentInstruments}"  
+				itemRenderer="org.cim.components.InstrumentFilterSelector"  />
+	</components:PopupMenu>
+	
+	<components:PopupMenu id="genrePopup" width="200" height="{55 + (30 * genres.length)}" 
+						  includeInLayout="false" caller="{genreButton}">
+						  <!--x="{this.width - 200}" y="44"-->
+		<s:List id="genreFilterList" width="100%" height="100%" borderVisible="false"
+				dataProvider="{genres}"
+				itemRenderer="org.cim.components.GenreFilterSelector" />
+	</components:PopupMenu>
+	
+</components:HomePanel>

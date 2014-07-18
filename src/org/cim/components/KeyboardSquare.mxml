@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" 
+		 width="100" height="100" mouseDown="handleMouseDown()"
+		 mouseUp="fadeDown.play()">
+	
+	<fx:Metadata>
+		[Event(name="press", type="flash.events.Event")]
+	</fx:Metadata>
+	
+	<fx:Script>
+		<![CDATA[
+			
+			[Bindable]
+			/**
+			 * The letter value of this key, if any.
+			 */
+			public var value:String;
+			
+			[Bindable]
+			/**
+			 * An alternate value.  Will override the standard value if it is set,
+			 * but maintains the ability for the code to use value (i.e. value could be 
+			 * for programatic purposes whereas alternate value would be for display).
+			 */
+			public var alternateValue:String;
+			
+			/**
+			 * Handles a mouse down on the keyboard.
+			 * Dispatches a press event and changes state.
+			 */
+			private function handleMouseDown():void {
+				fadeUp.play();
+				this.dispatchEvent(new Event("press"));
+			}  
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<s:Fade id="fadeUp" target="{background}" alphaFrom="0" alphaTo="0.2" />
+		<s:Fade id="fadeDown" target="{background}" alphaFrom="0.2" alphaTo="0" />
+	</fx:Declarations>
+	
+	<!-- Permanent Square -->
+	<s:Rect id="key" width="100%" height="100%" radiusX="8" radiusY="8" >
+		<s:fill>
+			<s:SolidColor color="0xFFFFFF" />
+		</s:fill>
+		<s:stroke>
+			<s:SolidColorStroke color="0x999999" pixelHinting="true" />
+		</s:stroke>
+	</s:Rect>
+	
+	<s:VGroup width="100%" height="100%" verticalAlign="middle" horizontalAlign="center">
+		<s:Label text="{(alternateValue != null ? alternateValue : (value is String ? value.toUpperCase() : value))}" 
+				 fontSize="24" />		
+	</s:VGroup>
+	
+	<!-- The Fading Squares -->
+	<s:Rect id="background" alpha="0" width="100%" height="100%" radiusX="8" radiusY="8">
+		<s:fill>
+			<s:SolidColor color="0x555555" />
+		</s:fill>
+	</s:Rect>
+</s:Group>

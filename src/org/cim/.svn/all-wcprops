@@ -1,0 +1,29 @@
+K 25
+svn:wc:ra_dav:version-url
+V 92
+/sresvn/src/!svn/ver/3797/openorchestra/OpenOrchestra%20Client%20Opera%20Release/src/org/cim
+END
+DataShop.as
+K 25
+svn:wc:ra_dav:version-url
+V 104
+/sresvn/src/!svn/ver/3754/openorchestra/OpenOrchestra%20Client%20Opera%20Release/src/org/cim/DataShop.as
+END
+AMFService.as
+K 25
+svn:wc:ra_dav:version-url
+V 106
+/sresvn/src/!svn/ver/3754/openorchestra/OpenOrchestra%20Client%20Opera%20Release/src/org/cim/AMFService.as
+END
+MixerManager.as
+K 25
+svn:wc:ra_dav:version-url
+V 108
+/sresvn/src/!svn/ver/3754/openorchestra/OpenOrchestra%20Client%20Opera%20Release/src/org/cim/MixerManager.as
+END
+PopupManager.as
+K 25
+svn:wc:ra_dav:version-url
+V 108
+/sresvn/src/!svn/ver/3754/openorchestra/OpenOrchestra%20Client%20Opera%20Release/src/org/cim/PopupManager.as
+END
